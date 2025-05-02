@@ -10,11 +10,18 @@ import w2o
 subjects, N = w2o.dataset.get_subjects()
 
 
+# Codice ispezioni preliminari
+#for subject in subjects:
+#    raw,_,_ = w2o.preliminary.load_raw_data(subject); 
+#    raw.pick(['eog', 'emg'])
+#    raw.plot(block=True)
+# 0 VEOG-RA
+# 4 Not usable LL
 
+# Manual preprocessing (Bad muscolar segments & ICA for blink and eventually hearth)
+for subject in subjects:
+    w2o.preliminary.preprocess_data(subject)
+    
 
-s = 2
-subject = subjects[s]
-
-w2o.preliminary.preprocess_data(subject)
 
 

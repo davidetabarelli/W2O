@@ -44,7 +44,8 @@ def load_raw_data(subject):
     raw.set_annotations(None)
     
     # Check
-    assert np.all(np.unique(np.asarray([v for v in evt_dict.values()])) == np.unique(events[:,2]))
+    #assert np.all(np.unique(np.asarray([v for v in evt_dict.values()])) == np.unique(events[:,2]))
+    assert(np.all(np.isin(np.unique(events[:,2]), np.asarray([v for v in evt_dict.values()]))))         # Alcuni eventi possono essere assenti
     
     # Check first sample and first time are set to zero (simpler events and annotations management)
     assert raw.first_samp == 0
@@ -111,7 +112,10 @@ def preprocess_data(subject):
     # Score automatically where possible (suggest)
     if len(ica.exclude) == 0:
         eog_idx, eog_scores = ica.find_bads_eog(raw)
-        ecg_idx, ecg_scores = ica.find_bads_ecg(raw)
+        if subject == 'ERER':
+            ecg_idx = []
+        else:
+            ecg_idx, ecg_scores = ica.find_bads_ecg(raw, ch_name='LL')    # ERER (s=4) LL non usabile
         ica.exclude = np.unique(eog_idx + ecg_idx)
     
     
@@ -121,7 +125,6 @@ def preprocess_data(subject):
     
     # Save inspection
     ica.save(ica_file, overwrite = True)
-    
             
     return
 

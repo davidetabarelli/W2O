@@ -84,4 +84,7 @@ def get_event_dict():
 
     evt_dict['Routine_end'] = 999
     
+    evt_dict['Exp_begin'] = 800
+    evt_dict['Exp_end'] = 801
+    
     return evt_dict

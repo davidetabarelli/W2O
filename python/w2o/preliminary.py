@@ -3,6 +3,7 @@
 import mne;
 import os;
 import numpy as np;
+import pickle;
 
 from w2o import filesystem
 from w2o import dataset
@@ -60,27 +61,40 @@ def load_raw_data(subject):
     
     return raw, events, evt_dict
 
+
 def preprocess_data(subject):
     
     # Load data and events
     raw, events, evt_dict = load_raw_data(subject)
     
     # Files
-    bchs_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-.badchannels.txt' % subject)
+    bchs_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-badchannels.txt' % subject)
     bad_annot_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-bad-annotations.fif' % subject)    
-    ica_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-ica.fif' % subject)
+    ica_eyes_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-eyes-ica.fif' % subject)
+    ica_muscle_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-muscle-ica.fif' % subject)
+    # ica_scores_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-ica-scores.pkl' % subject)
     
-    # Load previous manual annotations (if present)
+    # Load previous manual annotations and badchannels (if present)
     if os.path.exists(bad_annot_file):
         bad_annot = mne.annotations.read_annotations(bad_annot_file)         # CONTROLLA
     else:
         bad_annot = mne.annotations.Annotations(0,0.1, description='BAD_MANUAL')   # Insert fake annotation of 0.1 second after start (for display in raw data inspection)
         
+    if os.path.exists(bchs_file):
+        bads = np.loadtxt(fname=bchs_file, dtype='bytes').astype(str).tolist();
+        
+        # Inject bad channels
+        if type(bads) is list:
+            raw.info['bads'] = bads
+        else:
+            raw.info['bads'] = [bads]        
+        
+        
     # Inject manual annotations
     raw.set_annotations(bad_annot);
     
     # Mark bad channels and bad segments
-    raw.plot(event_color='r', events=events, event_id=evt_dict, block=True, remove_dc=True, n_channels=59, duration=20, scalings=dict(eeg=40e-6))
+    raw.plot(event_color='b', events=events, event_id=evt_dict, block=True, remove_dc=True, n_channels=59, duration=20, scalings=dict(eeg=40e-6))
     
     # Save bad annotations
     bad_annot = raw.annotations;
@@ -92,41 +106,157 @@ def preprocess_data(subject):
     # Interpolate bad channels
     raw.load_data().interpolate_bads()
     
-    # Data for ICA
-    iraw = raw.copy().filter(l_freq=0.2, h_freq=None).pick('eeg')
+    # Eye and ECG ICA --> 
+    iraw_eyes = raw.copy().filter(l_freq=1, h_freq=90).pick('eeg')
     
-    # Fit or load ICA if existing    
-    if os.path.exists(ica_file):
-        ica = mne.preprocessing.read_ica(ica_file)
+    if os.path.exists(ica_eyes_file):
+        ica_eyes = mne.preprocessing.read_ica(ica_eyes_file)
     else:
-        # Create ICA object
-        #ica = mne.preprocessing.ICA(n_components=0.99, random_state=19579, method='infomax', fit_params=dict(extended=True))
-        ica = mne.preprocessing.ICA(n_components=48, random_state=19579, method='fastica')
+        # Create ICA object        
+        #ica = mne.preprocessing.ICA(n_components=48, random_state=19579, method='infomax', fit_params=dict(extended=True))
+        ica_eyes = mne.preprocessing.ICA(n_components=48, random_state=19579, method='fastica', max_iter=10000)
         
         # Fit ICA to data        
-        ica.fit(iraw, reject_by_annotation=True)
+        ica_eyes.fit(iraw_eyes, reject_by_annotation=True)
     
         # Save raw ICA
-        ica.save(ica_file, overwrite = True)
-        
+        ica_eyes.save(ica_eyes_file, overwrite = True)
+    
     # Score automatically where possible (suggest)
-    if len(ica.exclude) == 0:
-        eog_idx, eog_scores = ica.find_bads_eog(raw)
+    if len(ica_eyes.exclude) == 0:
+        
+        eog_idx, eog_scores = ica_eyes.find_bads_eog(raw)
+        
         if subject == 'ERER':
             ecg_idx = []
         else:
-            ecg_idx, ecg_scores = ica.find_bads_ecg(raw, ch_name='LL')    # ERER (s=4) LL non usabile
-        ica.exclude = np.unique(eog_idx + ecg_idx)
+            ecg_idx, ecg_scores = ica_eyes.find_bads_ecg(raw, ch_name='LL')    # ERER (s=4) LL non usabile
+        
+        ica_eyes.exclude = np.unique(eog_idx + ecg_idx)
     
     
     # Display ICA for inspection
-    ica.plot_components(inst=iraw, nrows=6, ncols=8, res=48)
-    ica.plot_sources(iraw, block=True)
+    ica_eyes.plot_components(inst=raw, nrows=6, ncols=8, res=48)
+    ica_eyes.plot_sources(raw, block=True)
     
     # Save inspection
-    ica.save(ica_file, overwrite = True)
+    ica_eyes.save(ica_eyes_file, overwrite = True)
+    
+    # <--
+    
+    
+    # Muscle ICA
+    iraw_muscle = ica_eyes.apply(raw.copy()).filter(l_freq=3.0, h_freq=145).pick('eeg')
+    
+    if os.path.exists(ica_muscle_file):
+        ica_muscle = mne.preprocessing.read_ica(ica_muscle_file)
+    else:
+        # Create ICA object        
+        #ica = mne.preprocessing.ICA(n_components=48, random_state=19579, method='infomax', fit_params=dict(extended=True))
+        ica_muscle = mne.preprocessing.ICA(n_components=48, random_state=19579, method='fastica', max_iter=10000)
+        
+        # Fit ICA to data        
+        ica_muscle.fit(iraw_muscle, reject_by_annotation=True)
+    
+        # Save raw ICA
+        ica_muscle.save(ica_muscle_file, overwrite = True)
+    
+    # Score automatically where possible (suggest)
+    if len(ica_muscle.exclude) == 0:    
+        emg_idx, emg_scores = ica_muscle.find_bads_muscle(iraw_muscle)        
+        ica_muscle.exclude = emg_idx
+    
+    
+    # Display ICA for inspection
+    ica_muscle.plot_components(inst=ica_eyes.apply(raw.copy()), nrows=6, ncols=8, res=48)
+    ica_muscle.plot_sources(ica_eyes.apply(raw.copy()), block=True)
+    
+    # Save inspection
+    ica_muscle.save(ica_muscle_file, overwrite = True)
+    
+    # <--
+    
+    # Last inspection and manual annotation
+    craw = ica_muscle.apply(ica_eyes.apply(raw.copy()))
+    
+    craw.plot(event_color='b', events=events, event_id=evt_dict, block=True, remove_dc=True, n_channels=59, duration=20, scalings=dict(eeg=25e-6))
+    
+    bad_annot = craw.annotations;
+    bad_annot.save(bad_annot_file, overwrite = True)
+    
+    
+
+# def preprocess_data(subject):
+    
+#     # Load data and events
+#     raw, events, evt_dict = load_raw_data(subject)
+    
+#     # Files
+#     bchs_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-.badchannels.txt' % subject)
+#     bad_annot_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-bad-annotations.fif' % subject)    
+#     ica_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-ica.fif' % subject)
+    
+#     # Load previous manual annotations (if present)
+#     if os.path.exists(bad_annot_file):
+#         bad_annot = mne.annotations.read_annotations(bad_annot_file)         # CONTROLLA
+#     else:
+#         bad_annot = mne.annotations.Annotations(0,0.1, description='BAD_MANUAL')   # Insert fake annotation of 0.1 second after start (for display in raw data inspection)
+        
+#     # Inject manual annotations
+#     raw.set_annotations(bad_annot);
+    
+#     # Mark bad channels and bad segments
+#     raw.plot(event_color='r', events=events, event_id=evt_dict, block=True, remove_dc=True, n_channels=59, duration=20, scalings=dict(eeg=40e-6))
+    
+#     # Save bad annotations
+#     bad_annot = raw.annotations;
+#     bad_annot.save(bad_annot_file, overwrite = True)
+    
+#     # Save bad channels
+#     np.savetxt(fname=bchs_file, X=raw.info['bads'], fmt='%s')
+    
+#     # Interpolate bad channels
+#     raw.load_data().interpolate_bads()
+    
+#     # Data for ICA
+#     #iraw = raw.copy().filter(l_freq=0.2, h_freq=None).pick('eeg')
+#     irawA = raw.copy().filter(l_freq=1, h_freq=None).pick('eeg')
+#     irawB = raw.copy().filter(l_freq=5.0, h_freq=None).pick('eeg')
+    
+#     # Fit or load ICA if existing    
+#     if os.path.exists(ica_file):
+#         ica = mne.preprocessing.read_ica(ica_file)
+#     else:
+#         # Create ICA object
+#         #ica = mne.preprocessing.ICA(n_components=0.99, random_state=19579, method='infomax', fit_params=dict(extended=True))
+#         #ica = mne.preprocessing.ICA(n_components=48, random_state=19579, method='fastica')
+#         ica = mne.preprocessing.ICA(n_components=48, random_state=19579, method='infomax', fit_params=dict(extended=True))
+        
+#         # Fit ICA to data        
+#         ica.fit(irawA, reject_by_annotation=True)
+    
+#         # Save raw ICA
+#         ica.save(ica_file, overwrite = True)
+        
+#     # Score automatically where possible (suggest)
+#     if len(ica.exclude) == 0:
+#         emg_idx, emg_scores = ica.find_bads_muscle(iraw)
+#         eog_idx, eog_scores = ica.find_bads_eog(raw)
+#         if subject == 'ERER':
+#             ecg_idx = []
+#         else:
+#             ecg_idx, ecg_scores = ica.find_bads_ecg(raw, ch_name='LL')    # ERER (s=4) LL non usabile
+#         ica.exclude = np.unique(eog_idx + ecg_idx + emg_idx)
+    
+    
+#     # Display ICA for inspection
+#     ica.plot_components(inst=iraw, nrows=6, ncols=8, res=48)
+#     ica.plot_sources(iraw, block=True)
+    
+#     # Save inspection
+#     ica.save(ica_file, overwrite = True)
             
-    return
+#     return
 
 def get_clean_data(subject):
     
@@ -134,9 +264,10 @@ def get_clean_data(subject):
     raw, events, evt_dict = load_raw_data(subject)
 
     # Files
-    bchs_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-.badchannels.txt' % subject)
+    bchs_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-badchannels.txt' % subject)
     bad_annot_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-bad-annotations.fif' % subject)    
-    ica_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-ica.fif' % subject)
+    ica_eyes_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-eyes-ica.fif' % subject)
+    ica_muscle_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-muscle-ica.fif' % subject)
 
     # Load manual annotations and bad channels
     bad_annot = mne.annotations.read_annotations(bad_annot_file) 
@@ -155,17 +286,18 @@ def get_clean_data(subject):
     raw.load_data().interpolate_bads()
     
     # Load ICA
-    ica = mne.preprocessing.read_ica(ica_file)
+    ica_eyes = mne.preprocessing.read_ica(ica_eyes_file)
+    ica_muscle = mne.preprocessing.read_ica(ica_muscle_file)
     
     # Apply ICA
     eeg_raw = raw.copy().pick('eeg')
     eog_raw = raw.copy().pick('eog')
-    ecg_raw = raw.copy().pick(['ecg'])    
+    emg_raw = raw.copy().pick('emg')    
     
     # Apply ICA removing bad components on each sensor type
-    craw = ica.apply(eeg_raw)    
+    craw = ica_muscle.apply(ica_eyes.apply(eeg_raw.copy()))
     
     # Join back data
-    craw.add_channels([eog_raw, ecg_raw])
+    craw.add_channels([eog_raw, emg_raw])
     
     return craw, events, evt_dict

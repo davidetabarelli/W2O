@@ -188,7 +188,11 @@ def get_clean_data(subject, enhc_flag=True):
     if type(bads) is list:
         raw.info['bads'] = bads
     else:
-        raw.info['bads'] = [bads]        
+        raw.info['bads'] = [bads]     
+    
+    
+    # Interpolate bad channels
+    raw.load_data().interpolate_bads()
         
     
     # Load and apply ICA

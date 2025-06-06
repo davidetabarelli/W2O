@@ -4,6 +4,7 @@ import os
 # Paths
 basedir = os.path.dirname(os.path.dirname(os.getcwd()))
 datadir = os.path.join(basedir, 'data')
+anatomydir = os.path.join(basedir, 'data', 'anatomy')
 resultsdir = os.path.join(basedir, 'results')
 
 ########## FUNCTIONS ##########
@@ -16,6 +17,10 @@ def get_basedir():
 def get_datadir():
     
     return datadir
+
+def get_anatomydir():
+    
+    return anatomydir
 
 def get_eegrawsubjectdir(subject):
     

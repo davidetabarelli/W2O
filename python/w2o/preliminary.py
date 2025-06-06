@@ -7,6 +7,7 @@ import pickle;
 
 from w2o import filesystem
 from w2o import dataset
+from w2o import utils
 
 
 
@@ -18,7 +19,7 @@ def load_raw_data(subject):
     raw = mne.io.read_raw_brainvision((os.path.join(filesystem.get_eegrawsubjectdir(subject), '%s_eeg.vhdr' % subject)), preload=True)
     
     # Base filters
-    raw.filter(l_freq=0.2, h_freq=145)
+    raw.filter(l_freq=0.5, h_freq=95)
     raw.notch_filter(freqs=[50, 100], notch_widths=2.0)
     
     # Set channel types
@@ -58,7 +59,7 @@ def load_raw_data(subject):
     # TODO: quando mi dicono bene che succede (vedi file domande)
     # Create not usable (as BAD_NO_USE) periods as annotations. So far "Instructions"
     #bad_evt = mne.pick_events(events, include=[evt_dict[key] for key in ['Instructions_on', 'Instructions_off']])
-    
+        
     return raw, events, evt_dict
 
 
@@ -66,7 +67,7 @@ def preprocess_data(subject):
     
     # Load data and events
     raw, events, evt_dict = load_raw_data(subject)
-    
+        
     # Files
     bchs_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-badchannels.txt' % subject)
     bad_annot_file = os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-bad-annotations.fif' % subject)    
@@ -80,12 +81,12 @@ def preprocess_data(subject):
     if os.path.exists(bad_annot_file):
         bad_annot = mne.annotations.read_annotations(bad_annot_file)
     else:
-        bad_annot = mne.annotations.Annotations(0,0.1, description='BAD_MANUAL')
+        bad_annot = mne.annotations.Annotations(0.1,0.5, description='MANUAL')
     
     if os.path.exists(muscle_annot_file):
         muscle_annot = mne.annotations.read_annotations(muscle_annot_file)
     else:        
-        muscle_annot = mne.annotations.Annotations(0,0.1, description='BAD_MUSCLE')
+        muscle_annot = mne.annotations.Annotations(0.1,0.5, description='MUSCLE')
         
     if os.path.exists(bchs_file):
         bads = np.loadtxt(fname=bchs_file, dtype='bytes').astype(str).tolist();
@@ -104,9 +105,9 @@ def preprocess_data(subject):
     raw.plot(event_color='b', events=events, event_id=evt_dict, block=True, remove_dc=True, n_channels=59, duration=20, scalings=dict(eeg=40e-6))
     
     # Save bad annotations
-    bad_annot = raw.annotations[np.argwhere([ann['description'] == 'BAD_MANUAL' for ann in raw.annotations]).reshape(-1)]
+    bad_annot = raw.annotations[np.argwhere([ann['description'] == 'MANUAL' for ann in raw.annotations]).reshape(-1)]
     bad_annot.save(bad_annot_file, overwrite = True)
-    muscle_annot = raw.annotations[np.argwhere([ann['description'] == 'BAD_MUSCLE' for ann in raw.annotations]).reshape(-1)]
+    muscle_annot = raw.annotations[np.argwhere([ann['description'] == 'MUSCLE' for ann in raw.annotations]).reshape(-1)]
     muscle_annot.save(muscle_annot_file, overwrite = True)
     
     # Save bad channels
@@ -115,10 +116,13 @@ def preprocess_data(subject):
     # Interpolate bad channels
     raw.load_data().interpolate_bads()
     
+    # Compute average ref
+    rraw = utils.ref_to_avg_with_fcz(raw, True)
+    
     
     # ICA
-    raw.set_annotations(bad_annot)
-    iraw = raw.copy().filter(l_freq=1, h_freq=145).pick('eeg')    
+    iraw = rraw.copy().filter(l_freq=0.5, h_freq=95).pick('eeg')
+    iraw.set_annotations(bad_annot.copy().rename({'MANUAL': 'BAD_MANUAL'}))
     if os.path.exists(ica_file):
         ica = mne.preprocessing.read_ica(ica_file)
         ica.exclude = []
@@ -155,13 +159,13 @@ def preprocess_data(subject):
     if os.path.exists(muscle_enhc_annot_file):
         muscle_enhc_annot = mne.annotations.read_annotations(muscle_enhc_annot_file)
     else:
-        muscle_enhc_annot = mne.annotations.Annotations(0,0.1, description='BAD_MUSCLE_ENHC')
+        muscle_enhc_annot = mne.annotations.Annotations(0,0.1, description='MUSCLE_ENHC')
     
-        craw = ica.apply(raw)
+        craw = ica.apply(rraw)
         craw.set_annotations(bad_annot + muscle_enhc_annot)    
         craw.plot(event_color='b', events=events, event_id=evt_dict, block=True, remove_dc=True, n_channels=59, duration=20, scalings=dict(eeg=40e-6))
         
-        muscle_enhc_annot = craw.annotations[np.argwhere([ann['description'] == 'BAD_MUSCLE_ENHC' for ann in raw.annotations]).reshape(-1)]
+        muscle_enhc_annot = craw.annotations[np.argwhere([ann['description'] == 'MUSCLE_ENHC' for ann in craw.annotations]).reshape(-1)]
         muscle_enhc_annot.save(muscle_enhc_annot_file, overwrite = True)
 
     
@@ -194,6 +198,8 @@ def get_clean_data(subject, enhc_flag=True):
     # Interpolate bad channels
     raw.load_data().interpolate_bads()
         
+    # Compute average ref
+    rraw = utils.ref_to_avg_with_fcz(raw, True)
     
     # Load and apply ICA
     ica = mne.preprocessing.read_ica(ica_file)
@@ -202,23 +208,60 @@ def get_clean_data(subject, enhc_flag=True):
         ica_enhc_excluded = np.loadtxt(fname=ica_enhc_excl_file, dtype='bytes').astype(int).tolist();
         ica_excluded = np.loadtxt(fname=ica_excl_file, dtype='bytes').astype(int).tolist();
         ica.exclude = list(np.hstack((ica_excluded, ica_enhc_excluded)))
-    else:
-        
-        
+    else:        
         ica_excluded = np.loadtxt(fname=ica_excl_file, dtype='bytes').astype(int).tolist();
         ica.exclude = ica_excluded
     
-    craw = ica.apply(raw)
+    craw = ica.apply(rraw)
         
     # Load and inject annotations
     bad_annot = mne.annotations.read_annotations(bad_annot_file)
     if enhc_flag:
         muscle_enhc_annot = mne.annotations.read_annotations(muscle_enhc_annot_file)
-        craw.set_annotations(bad_annot + muscle_enhc_annot)
+        craw.set_annotations(bad_annot.copy().rename({'MANUAL': 'BAD_MANUAL'}) + muscle_enhc_annot.copy().rename({'MUSCLE_ENHC': 'BAD_MUSCLE_ENHC'}))
     else:
         muscle_annot = mne.annotations.read_annotations(muscle_annot_file)
-        craw.set_annotations(bad_annot + muscle_annot)
+        craw.set_annotations(bad_annot.copy().rename({'MANUAL': 'BAD_MANUAL'}) + muscle_annot.copy().rename({'MUSCLE': 'BAD_MUSCLE'}))
     
     
     return craw, events, evt_dict
+
+
+def extract_periods(craw, events, evt_dict, time_tol=2.0):
+    
+    Fs = craw.info['sfreq']
+    
+    periods_def = dataset.get_periods_definition()
+    
+    p_raws = {}
+    
+    for key, value in periods_def.items():
+        
+        print('Extracting %s' % key)
+        
+        evt_1 = evt_dict[value['evt_1']]
+        evt_2 = evt_dict[value['evt_2']]
+        
+        t_evts = mne.pick_events(events, include=[evt_1, evt_2])
+        
+        assert np.all(t_evts[1:,0] >= t_evts[:-1,0])
+        
+        i1 = np.argwhere(t_evts[:,2] == evt_1).reshape(-1)[0]
+        i2 = np.argwhere(t_evts[i1:,2] == evt_2).reshape(-1)[0] + i1
+        
+        assert t_evts[i1,2] == evt_1
+        assert t_evts[i2,2] == evt_2    
+        
+        if np.isin(key, ['VibTest', 'Muscles', 'Vib1', 'Vib2']):
+            t1 = t_evts[i1,0] / Fs - 1
+            t2 = t_evts[i2,0] / Fs + 1
+        else:
+            t1 = t_evts[i1,0] / Fs + time_tol
+            t2 = t_evts[i2,0] / Fs - time_tol
+        
+        p_raws[key] = craw.copy().crop(tmin=t1, tmax=t2)
+    
+    return p_raws
+  
+
 

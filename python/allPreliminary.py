@@ -19,8 +19,8 @@ subjects, N = w2o.dataset.get_subjects()
 # 4 Not usable LL
 
 # Manual preprocessing (Bad muscolar segments & ICA for blink and eventually hearth)
-for subject in subjects:
-    w2o.preliminary.preprocess_data(subject)
+#for subject in subjects:
+#    w2o.preliminary.preprocess_data(subject)
     
 
 

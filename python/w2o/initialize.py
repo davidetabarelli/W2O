@@ -4,5 +4,5 @@ import mne
 ########## FUNCTIONS ##########
 def initialize():
     print('')
-    #mne.set_config('SUBJECTS_DIR', filesystem.get_anatomydir())
+    mne.set_config('SUBJECTS_DIR', filesystem.get_anatomydir())
 

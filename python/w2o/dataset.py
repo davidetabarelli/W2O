@@ -25,8 +25,7 @@ def get_subjects():
 				'LOOM',	
 				'MMEN',	
 				'NGIC',	
-				'NIAL',	
-				'NNAS',	
+				'NIAL',						
 				'NNHE',	
 				'NNRA',	
 				'OFIE',	
@@ -37,6 +36,7 @@ def get_subjects():
 				'URER'#,
                 #'ERER'
                 # 'IUOR', Troppi buchi
+                # 'NNAS', Bughi qua e la. Rivedi
 			];
     
     return subjects, len(subjects)
@@ -115,12 +115,17 @@ def get_fbands_dict():
     
     fbands_dict = {}
     
-    fbands_dict['Delta'] = [2, 4]
+    # fbands_dict['Delta'] = [2, 4]    
+    # fbands_dict['Theta'] = [4, 7]
+    # fbands_dict['Alpha'] = [8, 13]
+    # fbands_dict['Beta'] = [15, 30]
+    # fbands_dict['Gamma'] = [31, 48] 
     
+    fbands_dict['Delta'] = [2, 4]    
     fbands_dict['Theta'] = [4, 7]
-    fbands_dict['Alpha'] = [8, 13]
-    fbands_dict['Beta'] = [15, 30]
-    fbands_dict['Gamma'] = [31, 48] 
+    fbands_dict['Alpha'] = [8, 12]
+    fbands_dict['Beta'] = [13, 30]
+    fbands_dict['Gamma'] = [31, 40] 
         
     
     return fbands_dict

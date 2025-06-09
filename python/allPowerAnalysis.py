@@ -93,7 +93,7 @@ for subject in subjects[0:13]:
             if period == 'FixOn':
                 normP = nrow['Power']
             
-            nrow['nPower'] = nrow['Power'] / normP
+            nrow['nPower'] = (nrow['Power'] / normP) - 1.0
             
             fb_df = pd.concat([fb_df, pd.DataFrame([nrow])], ignore_index=True)
 

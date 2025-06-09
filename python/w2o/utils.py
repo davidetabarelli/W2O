@@ -10,19 +10,6 @@ import matplotlib.pyplot as plt
 
 #### FUNCTIONS
 
-def get_fbands_dict():
-    
-    fbands_dict = {}
-    
-    fbands_dict['Theta'] = [4, 7]
-    fbands_dict['MuAlpha'] = [8, 13]
-    fbands_dict['Beta'] = [15, 30]
-    fbands_dict['LowGamma'] = [35, 48] 
-    fbands_dict['HighGamma'] = [65, 85] 
-    fbands_dict['HighFreq'] = [90, 180]     
-    
-    return fbands_dict
-
 
 def get_njobs():
 

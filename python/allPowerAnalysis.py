@@ -1,6 +1,8 @@
 import numpy as np
 import scipy as sp
 import os
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 
 import mne
@@ -11,7 +13,7 @@ import w2o
 subjects, N = w2o.dataset.get_subjects()
 
 
-s = 9
+s = 11
 craw, events, evt_dict = w2o.preliminary.get_clean_data(subjects[s], True)
 dbraw = w2o.utils.double_banana_ref(craw)
 
@@ -47,6 +49,57 @@ plt.legend(p_psds.keys())
 
 
 
+
+
+# 
+fbands = w2o.dataset.get_fbands_dict()
+fb_df = pd.DataFrame({  
+                        'Subject': pd.Series(dtype='str'), 
+                        'Band': pd.Series(dtype='str'), 
+                        'Period': pd.Series(dtype='str'), 
+                        'Power': pd.Series(dtype='float'), 
+                        'nPower': pd.Series(dtype='float'), 
+                    })
+
+for subject in subjects[0:13]:
+    
+    craw, events, evt_dict = w2o.preliminary.get_clean_data(subject, True)
+    p_raws = w2o.preliminary.extract_periods(craw, events, evt_dict, 1.0)
+    
+    p_psds = {}
+
+    p_psds['FixOn'] = mne.make_fixed_length_epochs(p_raws['FixRest'], duration=2.0, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=0.5, fmax=98, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
+    p_psds['EcRest'] = mne.make_fixed_length_epochs(p_raws['EcRest'], duration=2.0, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=0.5, fmax=98, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
+    p_psds['Breathe1'] = mne.make_fixed_length_epochs(p_raws['Breathe1'], duration=2.0, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=0.5, fmax=98, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
+    p_psds['Breathe2'] = mne.make_fixed_length_epochs(p_raws['Breathe2'], duration=2.0, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=0.5, fmax=98, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
+    p_psds['Porn'] = mne.make_fixed_length_epochs(p_raws['Porn'], duration=2.0, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=0.5, fmax=98, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
+    p_psds['Masturbation'] = mne.make_fixed_length_epochs(p_raws['Masturbation'], duration=2.0, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=0.5, fmax=98, bandwidth=2, proj=True, n_jobs=16, adaptive=True, low_bias=True).pick('eeg').average()
+    p_psds['Pleateau'] = mne.make_fixed_length_epochs(p_raws['Pleateau'], duration=2, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=0.5, fmax=98, bandwidth=2, proj=True, n_jobs=16, adaptive=True, low_bias=True).pick('eeg').average()
+    p_psds['Orgasm'] = mne.make_fixed_length_epochs(p_raws['Orgasm'], duration=2.0, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=0.5, fmax=98, bandwidth=2, proj=True, n_jobs=16, adaptive=True, low_bias=True).pick('eeg').average()
+
+    freqs = p_psds['FixOn'].freqs
+    
+    for key, fb in fbands.items():
+        fb_idx = np.argwhere((freqs >= fb[0]) & (freqs <= fb[1])).reshape(-1)
+        for period in p_psds.keys():
+            
+            nrow ={}
+            
+            nrow['Subject'] = subject
+            nrow['Band'] = key
+            nrow['Period'] = period
+            nrow['Power'] = np.mean(np.mean(np.sqrt(p_psds[period].get_data()), axis=0)[fb_idx])
+            
+            if period == 'FixOn':
+                normP = nrow['Power']
+            
+            nrow['nPower'] = nrow['Power'] / normP
+            
+            fb_df = pd.concat([fb_df, pd.DataFrame([nrow])], ignore_index=True)
+
+
+
+
 # Vibs
 vib_on_epochs = mne.Epochs(craw, mne.merge_events(events, [evt_dict['Vib_test_on'], evt_dict['Vib_1_on'], evt_dict['Vib_2_on']], 200), 200, tmin=0.0, tmax=1.0, baseline=(None,1.0), picks='eeg', reject_by_annotation=True, proj=True)
 vib_off_epochs = mne.Epochs(craw, mne.merge_events(events, [evt_dict['Vib_test_off'], evt_dict['Vib_1_off'], evt_dict['Vib_2_off']], 201), 201, 0, 1.0, baseline=(None,1.0), picks='eeg', reject_by_annotation=True, proj=True)
@@ -65,7 +118,10 @@ plt.legend(['Vibration on', 'Vibration off'])
 
 
 
+# Preliminary
+fbands = w2o.utils.get_fbands_dict()
 
+for subject in subjects:
 
 
 

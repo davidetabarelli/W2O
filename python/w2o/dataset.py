@@ -108,3 +108,19 @@ def get_periods_definition():
     periods_def['Breathe2'] = {'evt_1': 'Breath_2_start', 'evt_2': 'Routine_end'}
     
     return periods_def
+
+
+
+def get_fbands_dict():
+    
+    fbands_dict = {}
+    
+    fbands_dict['Delta'] = [2, 4]
+    
+    fbands_dict['Theta'] = [4, 7]
+    fbands_dict['Alpha'] = [8, 13]
+    fbands_dict['Beta'] = [15, 30]
+    fbands_dict['Gamma'] = [31, 48] 
+        
+    
+    return fbands_dict

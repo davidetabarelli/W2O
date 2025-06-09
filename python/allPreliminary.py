@@ -9,7 +9,7 @@ import w2o
 
 subjects, N = w2o.dataset.get_subjects()
 
-
+ 
 # Codice ispezioni preliminari
 #for subject in subjects:
 #    raw,_,_ = w2o.preliminary.load_raw_data(subject); 

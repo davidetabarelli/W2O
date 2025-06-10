@@ -44,14 +44,22 @@ def load_raw_data(subject):
     events = mne.merge_events(events, [101,103], 101)       # Merge instructions end (button/no button)
     evt_dict = dataset.get_event_dict()
     raw.set_annotations(None)
+        
+    # Check first sample and first time are set to zero (simpler events and annotations management)
+    assert raw.first_samp == 0
+    assert raw.first_time == 0
+    
+    # Correct 75 event issue or resolution
+    if not np.any(events[:,2] == 75):
+        idx = np.argwhere(events[np.argwhere(events[:,2] == 73).reshape(-1)[0]:,2] == 999).reshape(-1)[0] + np.argwhere(events[:,2] == 73).reshape(-1)[0]
+        nevent = events[idx,:]        
+        events = np.insert(events, idx, nevent, axis=0)
+        events[idx,2] = 75
+        
     
     # Check
     #assert np.all(np.unique(np.asarray([v for v in evt_dict.values()])) == np.unique(events[:,2]))
     assert(np.all(np.isin(np.unique(events[:,2]), np.asarray([v for v in evt_dict.values()]))))         # Alcuni eventi possono essere assenti
-    
-    # Check first sample and first time are set to zero (simpler events and annotations management)
-    assert raw.first_samp == 0
-    assert raw.first_time == 0
     
     # Finally crop extremal: WARNING : THIS CHN
     #raw.crop(tmin=(events[0,0]/raw.info['sfreq']) - 1, tmax=(events[-1,0]/raw.info['sfreq']) + 1)
@@ -214,7 +222,7 @@ def get_clean_data(subject, enhc_flag=True):
         ica.exclude = ica_excluded
     
     craw = ica.apply(rraw)
-        
+    
     # Load and inject annotations
     bad_annot = mne.annotations.read_annotations(bad_annot_file)
     if enhc_flag:
@@ -254,8 +262,8 @@ def extract_periods(craw, events, evt_dict, time_tol=2.0):
         assert t_evts[i2,2] == evt_2    
         
         if np.isin(key, ['VibTest', 'Muscles', 'Vib1', 'Vib2']):
-            t1 = t_evts[i1,0] / Fs - 1
-            t2 = t_evts[i2,0] / Fs + 1
+            t1 = t_evts[i1,0] / Fs - 0.1
+            t2 = t_evts[i2,0] / Fs + 0.1
         else:
             t1 = t_evts[i1,0] / Fs + time_tol
             t2 = t_evts[i2,0] / Fs - time_tol

@@ -11,13 +11,12 @@ import w2o
 
 
 subjects, N = w2o.dataset.get_subjects()
-tN = 19
 
 
 # Get all subjects data divided into all periods
 p_raws = [];
 db_p_raws = [];
-for subject in subjects[0:tN]:
+for subject in subjects:
     craw, events, evt_dict = w2o.preliminary.get_clean_data(subject, True)
     dbraw = w2o.utils.double_banana_ref(craw)    
     p_raws.append(w2o.preliminary.extract_periods(craw, events, evt_dict, 0))
@@ -28,8 +27,9 @@ for subject in subjects[0:tN]:
 # Compute all average power in frequency bands in periods of interests
 #iperiods = ['FixRest', 'EcRest', 'Porn', 'Masturbation', 'Pleateau', 'Orgasm']
 #iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm']
-iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Breathe1', 'Breathe2', 'FixRest', 'Porn']
-normPeriod = 'FixRest'
+#iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Breathe1', 'Breathe2', 'FixRest', 'Porn']
+iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']
+normPeriod = 'EcRest'
 fbands = w2o.dataset.get_fbands_dict()
 fb_df = pd.DataFrame({  
                         'Subject': pd.Series(dtype='str'), 
@@ -39,7 +39,7 @@ fb_df = pd.DataFrame({
                         'nPower': pd.Series(dtype='float'),     # Normalized to FixRest
                     })
 
-for s,subject in enumerate(subjects[0:tN]):
+for s,subject in enumerate(subjects):
     
     for period in iperiods:
         
@@ -58,13 +58,13 @@ for s,subject in enumerate(subjects[0:tN]):
             nrow['Subject'] = subject
             nrow['Band'] = band
             nrow['Period'] = period
-            #nrow['Power'] = np.mean(np.mean(np.sqrt(power), axis=0)[fb_idx]) # SQRT ????
-            nrow['Power'] = np.mean(np.mean(power, axis=0)[fb_idx])
+            nrow['Power'] = np.mean(np.mean(np.sqrt(power), axis=0)[fb_idx]) # SQRT ????
+            #nrow['Power'] = np.mean(np.mean(power, axis=0)[fb_idx])
             nrow['nPower'] = 0.0
             
             fb_df = pd.concat([fb_df, pd.DataFrame([nrow])], ignore_index=True)
 
-for subject in subjects[0:tN]:
+for subject in subjects:
     for band, fb in fbands.items():
         normP = fb_df.query('Subject == @subject').query('Band==@band').query('Period==@normPeriod')['Power'].values[0]
         for period in iperiods:

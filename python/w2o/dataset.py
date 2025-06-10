@@ -104,7 +104,7 @@ def get_periods_definition():
     periods_def['Masturbation'] = {'evt_1': 'Masturbation_start', 'evt_2': 'Pleateau'}
     periods_def['Pleateau'] = {'evt_1': 'Pleateau', 'evt_2': 'Orgasm_peak'}
     periods_def['Orgasm'] = {'evt_1': 'Orgasm_peak', 'evt_2': 'Orgasm_end'}
-    # periods_def['Resolution'] = {'evt_1': 'Orgasm_end', 'evt_2': 'Resolution'}   # Ask for triggers/definition
+    periods_def['Resolution'] = {'evt_1': 'Orgasm_end', 'evt_2': 'Resolution'}   # Ask for triggers/definition
     periods_def['Breathe2'] = {'evt_1': 'Breath_2_start', 'evt_2': 'Routine_end'}
     
     return periods_def

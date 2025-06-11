@@ -16,18 +16,97 @@ subjects, N = w2o.dataset.get_subjects()
 # Get all subjects data divided into all periods
 p_raws = [];
 db_p_raws = [];
+all_events = []
 for subject in subjects:
     craw, events, evt_dict = w2o.preliminary.get_clean_data(subject, True)
-    dbraw = w2o.utils.double_banana_ref(craw)    
-    p_raws.append(w2o.preliminary.extract_periods(craw, events, evt_dict, 0))
-    db_p_raws.append(w2o.preliminary.extract_periods(dbraw, events, evt_dict, 0))
+    p_raws.append(w2o.preliminary.extract_periods(craw, events, evt_dict, 0))    
+    all_events.append(events)
 
 
+# Define periods of interest
+iperiods = ['FixRest', 'EcRest', 'Muscles', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
+
+
+# Get all periods spectra
+p_psds = []
+for s,subject in enumerate(subjects):
+    psds = {ip : None for ip in iperiods}
+    for period in iperiods: 
+        
+        if period == 'Muscles':
+            lepochs = w2o.preliminary.extract_muscles_epochs(p_raws[s][period], all_events[s], evt_dict, 2.0, 0.5)
+            psds[period] = lepochs.compute_psd(method='multitaper', fmin=2.0, fmax=45, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
+        else:
+            psds[period] = mne.make_fixed_length_epochs(p_raws[s][period], duration=2, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=2.0, fmax=45, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
+        
+    p_psds.append(psds)
+    del psds
+
+
+# Frequenze
+freqs = p_psds[0]['FixRest'].freqs
+
+
+# Media sui canali per ciascun soggetto (matrice)
+pld_p_psds = {ip : np.asarray([np.mean(p_psd[ip].get_data(), axis=0) for p_psd in p_psds]) for ip in iperiods}
+
+
+# Grand averages with SEM
+ga_p_psds = {ip : np.mean(pld_p_psds[ip], axis=0) for ip in iperiods}
+sem_p_psds = {ip : np.std(pld_p_psds[ip], axis=0) / np.sqrt(N) for ip in iperiods}
+
+
+# Grafico
+fig, ax = plt.subplots()
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+for ip in iperiods:
+    ax.semilogy(freqs, ga_p_psds[ip])
+ax.legend(iperiods)
+for ip in iperiods:
+    plt.fill_between(freqs, ga_p_psds[ip] - sem_p_psds[ip], ga_p_psds[ip] + sem_p_psds[ip], alpha=0.1)
+fig.set_size_inches([9,5])
+ax.set_xlabel('Frequency [Hz]')
+ax.set_ylabel('EEG Power')
+fig.suptitle('Spettri dei periodi di interesse mediati sul gruppo con SEM.', fontsize=10)
+
+
+# Spettri normalizzati sul FixRest, in dB
+nperiod = 'FixRest'
+
+n_pld_p_psds = {ip : 10.0 * np.log10(pld_p_psds[ip] / pld_p_psds[nperiod]) for ip in iperiods}
+
+n_ga_p_psds = {ip : np.mean(n_pld_p_psds[ip], axis=0) for ip in iperiods}
+n_sem_p_psds = {ip : np.std(n_pld_p_psds[ip], axis=0) / np.sqrt(N) for ip in iperiods}
+
+
+# Grafico
+fig, ax = plt.subplots()
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+for ip in [ip for ip in iperiods if ip != nperiod]:
+    ax.plot(freqs, n_ga_p_psds[ip])
+ax.legend([ip for ip in iperiods if ip != nperiod])
+for ip in [ip for ip in iperiods if ip != nperiod]:
+    plt.fill_between(freqs, n_ga_p_psds[ip] - n_sem_p_psds[ip], n_ga_p_psds[ip] + n_sem_p_psds[ip], alpha=0.1)
+fig.set_size_inches([9,5])
+ax.set_xlabel('Frequency [Hz]')
+ax.set_ylabel('EEG Power [dB]')
+fig.suptitle('Spettri dei periodi di interesse normalizzati sul %s (in dB) e mediati sul gruppo con SEM.' % nperiod, fontsize=10)
+
+
+
+
+## Bande di frequenza. Fai funzione che le estrae dal psd individuale. Poi ANOVA e post hoc.
+
+
+
+
+
+
+##### OLDIES
 
 # Compute all average power in frequency bands in periods of interests
-#iperiods = ['FixRest', 'EcRest', 'Porn', 'Masturbation', 'Pleateau', 'Orgasm']
-#iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm']
-#iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Breathe1', 'Breathe2', 'FixRest', 'Porn']
 iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']
 normPeriod = 'EcRest'
 fbands = w2o.dataset.get_fbands_dict()
@@ -36,14 +115,14 @@ fb_df = pd.DataFrame({
                         'Band': pd.Series(dtype='str'), 
                         'Period': pd.Series(dtype='str'), 
                         'Power': pd.Series(dtype='float'), 
-                        'nPower': pd.Series(dtype='float'),     # Normalized to FixRest
+                        'nPower': pd.Series(dtype='float'),     # Normalized
                     })
 
 for s,subject in enumerate(subjects):
     
     for period in iperiods:
         
-        psd = mne.make_fixed_length_epochs(p_raws[s][period], duration=1.5, proj=True, reject_by_annotation=True, overlap=0.375).drop_bad().compute_psd(method='multitaper', fmin=0.5, fmax=98, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
+        psd = mne.make_fixed_length_epochs(p_raws[s][period], duration=2, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=2.0, fmax=45, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
    
         freqs = psd.freqs
         power = psd.get_data()

@@ -4,6 +4,7 @@ import pandas as pd
 import mne
 
 from w2o import filesystem
+from w2o import preliminary
 
 
 ##### FUNCTIONS ####
@@ -111,7 +112,7 @@ def get_periods_definition():
 
 
 
-def get_fbands_dict():
+def get_fbands_dict(mode='standard'):
     
     fbands_dict = {}
     
@@ -121,11 +122,77 @@ def get_fbands_dict():
     # fbands_dict['Beta'] = [15, 30]
     # fbands_dict['Gamma'] = [31, 48] 
     
-    fbands_dict['Delta'] = [2, 4]    
-    fbands_dict['Theta'] = [4, 7]
-    fbands_dict['Alpha'] = [8, 12]
-    fbands_dict['Beta'] = [13, 30]
-    fbands_dict['Gamma'] = [31, 40] 
+    if mode == 'standard':
+        fbands_dict['Delta'] = [2, 4]    
+        fbands_dict['Theta'] = [4, 7]
+        fbands_dict['Alpha'] = [8, 12]
+        fbands_dict['Beta'] = [13, 30]
+        fbands_dict['Gamma'] = [31, 40] 
+    
+    if mode == 'data_driven':
+        fbands_dict['Delta'] = [2, 4]    
+        fbands_dict['Theta'] = [4, 7]
+        fbands_dict['Alpha'] = [8, 13]
+        fbands_dict['Beta'] = [16, 27]
+        fbands_dict['Gamma'] = [31, 44]         
         
     
     return fbands_dict
+
+
+def get_dataset_info():
+    
+    dinfo_file = os.path.join(filesystem.get_resultssubjectdir('preprocessing', 'group'), 'dataset_info.pkl')
+    
+    if os.path.exists(dinfo_file):
+        
+        dinfo = pd.read_pickle(dinfo_file)        
+        
+    else:
+        
+        subjects, N = get_subjects()
+        periods = get_periods_definition().keys()
+        
+        dinfo = pd.DataFrame({ ** { 
+                                    'Subject': pd.Series(dtype='str'), 
+                                    'Bad_Channels': pd.Series(dtype='int'), 
+                                    'Total_Comps': pd.Series(dtype='int'), 
+                                    'Rejected_Comps': pd.Series(dtype='int')
+                                },
+                              ** {'%s_Time' % period :pd.Series(dtype='float') for period in periods}                      
+                            })
+        
+        for subject in subjects:
+            
+            nrow = {}
+            
+            nrow['Subject'] = subject
+            
+            bads = np.loadtxt(fname=os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-badchannels.txt' % subject), dtype='bytes').astype(str).tolist();
+            if bads == []:
+                nrow['Bad_Channels'] = 0
+            elif type(bads) is list:
+                nrow['Bad_Channels'] = 1
+            else:
+                nrow['Bad_Channels'] = len(bads)
+            
+            ica = mne.preprocessing.read_ica(os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-ica.fif' % subject))
+            
+            nrow['Total_Comps'] = ica.n_components_
+            
+            ica_excluded = np.loadtxt(fname=os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-ica-excluded.txt' % subject), dtype='bytes').astype(int).tolist();
+            ica_enhc_excluded = np.loadtxt(fname=os.path.join(filesystem.get_artfctsubjectdir(subject), '%s-ica-enhc-excluded.txt' % subject), dtype='bytes').astype(int).tolist();
+            
+            nrow['Rejected_Comps'] = len(ica_excluded + ica_enhc_excluded)
+            
+            craw, events, evt_dict = preliminary.get_clean_data(subject, True)
+            p_raws = preliminary.extract_periods(craw, events, evt_dict, 0.0)
+            
+            for period in periods:
+                nrow['%s_Time' % period] = (p_raws[period].last_samp - p_raws[period].first_samp) / p_raws[period].info['sfreq']
+                
+            dinfo = pd.concat([dinfo, pd.DataFrame([nrow])], ignore_index=True)
+        
+        dinfo.to_pickle(dinfo_file)
+        
+    return dinfo

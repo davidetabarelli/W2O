@@ -274,3 +274,35 @@ def extract_periods(craw, events, evt_dict, time_tol=2.0):
   
 
 
+def extract_muscles_epochs(praw, events, evt_dict, duration=2, overlap=0.5):
+    
+    Fs =  praw.info['sfreq']
+    
+    f_samp = praw.first_samp
+    l_samp = praw.last_samp
+    
+    levents = events[np.argwhere((events[:,0] >= f_samp) & (events[:,0] <= l_samp)).reshape(-1),:]
+    levents = mne.pick_events(levents, include=[evt_dict['Muscles_start'], evt_dict['Routine_end']])
+    
+    assert(np.unique(levents[0::2,2])[0] == evt_dict['Muscles_start'])
+    assert(np.unique(levents[1::2,2])[0] == evt_dict['Routine_end'])
+    
+    all_epochs = []
+    for i in range(int(levents.shape[0]/2)):
+        
+        i1 = 2*i;
+        i2 = 2*i + 1;
+        
+        t1 = (levents[i1,0] - f_samp) / Fs
+        t2 = (levents[i2,0] - f_samp) / Fs
+        
+        all_epochs.append(mne.make_fixed_length_epochs(praw.copy().crop(tmin=t1, tmax=t2), duration=duration, proj=True, reject_by_annotation=True, overlap=overlap).drop_bad())
+    
+    epochs = mne.concatenate_epochs(all_epochs)
+    
+    return epochs
+        
+    
+    
+    
+

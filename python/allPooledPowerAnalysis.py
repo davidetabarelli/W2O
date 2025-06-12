@@ -15,7 +15,6 @@ subjects, N = w2o.dataset.get_subjects()
 
 # Get all subjects data divided into all periods
 p_raws = [];
-db_p_raws = [];
 all_events = []
 for subject in subjects:
     craw, events, evt_dict = w2o.preliminary.get_clean_data(subject, True)
@@ -27,10 +26,12 @@ for subject in subjects:
 iperiods = ['FixRest', 'EcRest', 'Muscles', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
 
 
-# Get all periods spectra
+# Get all periods spectra, also as evoked structures
 p_psds = []
-for s,subject in enumerate(subjects):
+#p_psd_evk = []
+for s, subject in enumerate(subjects):
     psds = {ip : None for ip in iperiods}
+    psds_evk = {ip : None for ip in iperiods}
     for period in iperiods: 
         
         if period == 'Muscles':
@@ -39,21 +40,34 @@ for s,subject in enumerate(subjects):
         else:
             psds[period] = mne.make_fixed_length_epochs(p_raws[s][period], duration=2, proj=True, reject_by_annotation=True, overlap=0.5).drop_bad().compute_psd(method='multitaper', fmin=2.0, fmax=45, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False).pick('eeg').average()
         
+        #info = mne.create_info(psds[period].info['ch_names'], 2.0, 'eeg')
+        #info.set_montage('standard_1005')
+        #psds_evk[period] = mne.EvokedArray(psds[period].get_data(), info)
+        #psds_evk[period].comment  = period
+        
     p_psds.append(psds)
+    #p_psd_evk.append(psds_evk)
+    
     del psds
+    #del psds_evk
+
+
 
 
 # Frequenze
 freqs = p_psds[0]['FixRest'].freqs
 
 
+# Medie di gruppo con canali esplosi
+....####???
+
 # Media sui canali per ciascun soggetto (matrice)
 pld_p_psds = {ip : np.asarray([np.mean(p_psd[ip].get_data(), axis=0) for p_psd in p_psds]) for ip in iperiods}
 
 
 # Grand averages with SEM
-ga_p_psds = {ip : np.mean(pld_p_psds[ip], axis=0) for ip in iperiods}
-sem_p_psds = {ip : np.std(pld_p_psds[ip], axis=0) / np.sqrt(N) for ip in iperiods}
+ga_pld_p_psds = {ip : np.mean(pld_p_psds[ip], axis=0) for ip in iperiods}
+sem_pld_p_psds = {ip : np.std(pld_p_psds[ip], axis=0) / np.sqrt(N) for ip in iperiods}
 
 
 # Grafico
@@ -61,10 +75,10 @@ fig, ax = plt.subplots()
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 for ip in iperiods:
-    ax.semilogy(freqs, ga_p_psds[ip])
+    ax.semilogy(freqs, ga_pld_p_psds[ip])
 ax.legend(iperiods)
 for ip in iperiods:
-    plt.fill_between(freqs, ga_p_psds[ip] - sem_p_psds[ip], ga_p_psds[ip] + sem_p_psds[ip], alpha=0.1)
+    plt.fill_between(freqs, ga_pld_p_psds[ip] - sem_pld_p_psds[ip], ga_pld_p_psds[ip] + sem_pld_p_psds[ip], alpha=0.1)
 fig.set_size_inches([9,5])
 ax.set_xlabel('Frequency [Hz]')
 ax.set_ylabel('EEG Power')

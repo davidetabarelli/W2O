@@ -236,11 +236,14 @@ def get_clean_data(subject, enhc_flag=True):
     return craw, events, evt_dict
 
 
-def extract_periods(craw, events, evt_dict, time_tol=2.0):
+def extract_periods(craw, events, evt_dict, time_tol=2.0, periods=[]):
     
     Fs = craw.info['sfreq']
     
     periods_def = dataset.get_periods_definition()
+    
+    if not periods == []:
+        periods_def = {ip : periods_def[ip] for ip in periods}
     
     p_raws = {}
     
@@ -303,6 +306,54 @@ def extract_muscles_epochs(praw, events, evt_dict, duration=2, overlap=0.5):
     return epochs
         
     
+    
+def extract_vib_epochs(praw, events, evt_dict):
+    
+    Fs =  praw.info['sfreq']
+    
+    f_samp = praw.first_samp
+    l_samp = praw.last_samp
+    
+    levents = events[np.argwhere((events[:,0] >= f_samp) & (events[:,0] <= l_samp)).reshape(-1),:]
+    levents = mne.pick_events(levents, include=[evt_dict['Vib_test_on'], evt_dict['Vib_test_off'], evt_dict['Vib_1_on'], evt_dict['Vib_1_off'], evt_dict['Vib_2_on'], evt_dict['Vib_2_off']])
+    
+    if np.any(np.isin(np.unique(levents[:,2]), evt_dict['Vib_test_on'])):
+        v_on_evt = evt_dict['Vib_test_on']
+        v_off_evt = evt_dict['Vib_test_off']
+        
+    if np.any(np.isin(np.unique(levents[:,2]), evt_dict['Vib_1_on'])):
+        v_on_evt = evt_dict['Vib_1_on']
+        v_off_evt = evt_dict['Vib_1_off']
+    
+    if np.any(np.isin(np.unique(levents[:,2]), evt_dict['Vib_2_on'])):
+        v_on_evt = evt_dict['Vib_2_on']
+        v_off_evt = evt_dict['Vib_2_off']
+    
+    assert(np.unique(levents[0::2,2])[0] == v_on_evt)
+    assert(np.unique(levents[1::2,2])[0] == v_off_evt)
+    
+    assert np.min((np.diff(levents[:,0]) / Fs)[0::2]) >= 0.95 # Minimal length with tolerance
+    assert np.min((np.diff(levents[:,0]) / Fs)[1::2]) >= 1.45
+    
+    levents = mne.merge_events(mne.merge_events(levents, [22, 40, 60], 500), [23, 41, 61], 501)
+    
+    epochs_on =  mne.Epochs(praw, levents, event_id={'VibOn' : 500}, tmin=0.0, tmax=1.0, baseline=(None,None), reject_by_annotation=True, preload=True)
+    epochs_off = mne.Epochs(praw, levents, event_id={'VibOff' : 501}, tmin=0.5, tmax=1.5, baseline=(None,None), reject_by_annotation=True, preload=True)
+    
+    if  (len(epochs_off) == 0) & (len(epochs_on) == 0):
+        return
+        
+    if not len(epochs_off) == 0:
+        epochs_off.shift_time(-0.5)
+        epochs_off.baseline = epochs_on.baseline
+    
+    epochs_on.drop_bad()
+    epochs_off.drop_bad()
+    
+    epochs = mne.concatenate_epochs([epochs_on, epochs_off])
+    
+    return epochs
+
     
     
 

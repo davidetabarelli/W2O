@@ -69,3 +69,10 @@ def double_banana_ref(raw, reverse=False):
     # TODO: set positions according to average between channels position
     
     return dbraw
+   
+    
+    
+    
+    
+    
+    

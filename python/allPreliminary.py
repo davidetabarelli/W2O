@@ -13,12 +13,12 @@ import w2o
 subjects, N = w2o.dataset.get_subjects()
 
  
+# FATTO
 # Manual preprocessing
-for subject in subjects:
-    w2o.preliminary.preprocess_data(subject)
+# for subject in subjects:
+#    w2o.preliminary.preprocess_data(subject)
 
-
-
+# FATTO
 # for subject in subjects:
     
 #     bad_annot_file = os.path.join(w2o.filesystem.get_artfctsubjectdir(subject), '%s-bad-annotations.fif' % subject)    
@@ -60,3 +60,4 @@ for ip in iperiods:
 
 fig.suptitle('Distribuzione lunghezze periodi di interesse. Ogni punto è un soggetto. I valori indicano minimo e massimo sul campione per quel periodo.', fontsize=10)
 
+ax.set_xlim((ax.get_xlim()[0] - 10,ax.get_xlim()[1] + 10))

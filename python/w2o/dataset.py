@@ -112,34 +112,6 @@ def get_periods_definition():
 
 
 
-def get_fbands_dict(mode='standard'):
-    
-    fbands_dict = {}
-    
-    # fbands_dict['Delta'] = [2, 4]    
-    # fbands_dict['Theta'] = [4, 7]
-    # fbands_dict['Alpha'] = [8, 13]
-    # fbands_dict['Beta'] = [15, 30]
-    # fbands_dict['Gamma'] = [31, 48] 
-    
-    if mode == 'standard':
-        fbands_dict['Delta'] = [2, 4]    
-        fbands_dict['Theta'] = [4, 7]
-        fbands_dict['Alpha'] = [8, 12]
-        fbands_dict['Beta'] = [13, 30]
-        fbands_dict['Gamma'] = [31, 40] 
-    
-    if mode == 'data_driven':
-        fbands_dict['Delta'] = [2, 4]    
-        fbands_dict['Theta'] = [4, 7]
-        fbands_dict['Alpha'] = [8, 13]
-        fbands_dict['Beta'] = [16, 27]
-        fbands_dict['Gamma'] = [31, 44]         
-        
-    
-    return fbands_dict
-
-
 def get_dataset_info():
     
     dinfo_file = os.path.join(filesystem.get_resultssubjectdir('preprocessing', 'group'), 'dataset_info.pkl')

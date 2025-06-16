@@ -337,8 +337,8 @@ def extract_vib_epochs(praw, events, evt_dict):
     
     levents = mne.merge_events(mne.merge_events(levents, [22, 40, 60], 500), [23, 41, 61], 501)
     
-    epochs_on =  mne.Epochs(praw, levents, event_id={'VibOn' : 500}, tmin=0.0, tmax=1.0, baseline=(None,None), reject_by_annotation=True, preload=True)
-    epochs_off = mne.Epochs(praw, levents, event_id={'VibOff' : 501}, tmin=0.5, tmax=1.5, baseline=(None,None), reject_by_annotation=True, preload=True)
+    epochs_on =  mne.Epochs(praw, levents, event_id={'VibOn' : 500}, tmin=0.0, tmax=0.998, baseline=(None,None), reject_by_annotation=True, preload=True)
+    epochs_off = mne.Epochs(praw, levents, event_id={'VibOff' : 501}, tmin=0.5, tmax=1.498, baseline=(None,None), reject_by_annotation=True, preload=True)
     
     if  (len(epochs_off) == 0) & (len(epochs_on) == 0):
         return

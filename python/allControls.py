@@ -67,13 +67,13 @@ sem_pld_fb_psds = {ip : {fb: np.std(np.asarray(pld_fb_psds[ip][fb]), axis=0)/np.
 # Group statistical analysis on pooled spectra - T-Test comparison between VibOn and VibOff
 pld_avg_stat = w2o.statutils.pooled_spectra_1_samp_statistics([pld_avg_psds['VibOn'], pld_avg_psds['VibOff']])
 fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds['VibOn'], ga_pld_avg_psds['VibOff']], [sem_pld_avg_psds['VibOn'], sem_pld_avg_psds['VibOff']], freqs, pld_avg_stat['sig_cl'], pld_avg_stat['clp'], pld_avg_stat['cl'], pld_avg_stat['T'], legend)
-fig.suptitle('Group analysys - Pooled electrodes')
+fig.suptitle('Group analisys - Pooled electrodes')
 
 
 # Group statistical analysis on spatially resolved spectra - T-Test comparison between VibOn and VibOff
 avg_stat = w2o.statutils.spatial_spectra_1_samp_statistics([avg_psds['VibOn'], avg_psds['VibOff']])
 fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['VibOn'], ga_avg_psds['VibOff']], [sem_pld_avg_psds['VibOn'], sem_pld_avg_psds['VibOff']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['VibOn'][0].info, legend)
-fig.suptitle('Group analysys - Spatially resolved')
+fig.suptitle('Group analisys - Spatially resolved') 
 
 # Group statistical analysis on frequency bands ... come? Spatial o no?
 
@@ -83,7 +83,9 @@ for s in range(N):
     
     subject = subjects[s]
     
-    stat_data = [[mne.time_frequency.SpectrumArray(psds[ip][s].get_data()[i,:,:], psds[ip][s].info, psds[ip][s].freqs) for i in range(psds[ip][s].get_data().shape[0])] for ip in psds.keys()]
+    nE = np.min([len(psds['VibOn'][s]), len(psds['VibOff'][s])])
+    
+    stat_data = [[mne.time_frequency.SpectrumArray(psds[ip][s].get_data()[i,:,:], psds[ip][s].info, psds[ip][s].freqs) for i in range(nE)] for ip in psds.keys()]
     
     lstat = w2o.statutils.spatial_spectra_1_samp_statistics(stat_data)
     lsem = [np.std(np.mean(psds[ip][s].get_data(), axis=1), axis=0) for ip in psds.keys()]

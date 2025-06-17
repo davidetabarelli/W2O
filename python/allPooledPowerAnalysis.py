@@ -53,9 +53,24 @@ sem_avg_psds = {ip : np.std(np.asarray([avg_psds[ip][s].get_data() for s in rang
 ga_pld_avg_psds = {ip : np.mean(np.asarray([pld_avg_psds[ip][s] for s in range(N)]), axis=0) for ip in pld_avg_psds.keys()}
 sem_pld_avg_psds = {ip : np.std(np.asarray([pld_avg_psds[ip][s] for s in range(N)]), axis=0)/np.sqrt(N) for ip in avg_psds.keys()}
 
+ga_fb_psds = {ip : {fb: np.mean(np.asarray(fb_psds[ip][fb]), axis=0) for fb in fb_psds[ip].keys()} for ip in fb_psds.keys()}
+sem_fb_psds = {ip : {fb: np.std(np.asarray(fb_psds[ip][fb]), axis=0)/np.sqrt(N) for fb in fb_psds[ip].keys()} for ip in fb_psds.keys()}
+
+ga_pld_fb_psds = {ip : {fb: np.mean(np.asarray(pld_fb_psds[ip][fb]), axis=0) for fb in pld_fb_psds[ip].keys()} for ip in pld_fb_psds.keys()}
+sem_pld_fb_psds = {ip : {fb: np.std(np.asarray(pld_fb_psds[ip][fb]), axis=0)/np.sqrt(N) for fb in pld_fb_psds[ip].keys()} for ip in pld_fb_psds.keys()}
 
 
-######
+
+###### Preliminary ...
 
 avg_stat = w2o.statutils.spatial_spectra_1_samp_statistics([avg_psds['Orgasm'], avg_psds['EcRest']])
-w2o.viz.plot_power_cluster_summary([ga_avg_psds['Orgasm'], ga_avg_psds['EcRest']], [sem_pld_avg_psds['Orgasm'], sem_pld_avg_psds['EcRest']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Orgasm'][0].info, legend)
+fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['Orgasm'], ga_avg_psds['EcRest']], [sem_pld_avg_psds['Orgasm'], sem_pld_avg_psds['EcRest']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Orgasm'][0].info, legend)
+fig.suptitle('Orgasm VS Eyes Closed rest - Group statistics')
+
+avg_stat = w2o.statutils.spatial_spectra_1_samp_statistics([avg_psds['Orgasm'], avg_psds['Muscles']])
+fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['Orgasm'], ga_avg_psds['Muscles']], [sem_pld_avg_psds['Orgasm'], sem_pld_avg_psds['Muscles']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Orgasm'][0].info, legend)
+fig.suptitle('Orgasm VS Muscles - Group statistics')
+
+avg_stat = w2o.statutils.spatial_spectra_1_samp_statistics([avg_psds['Muscles'], avg_psds['EcRest']])
+fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['Muscles'], ga_avg_psds['EcRest']], [sem_pld_avg_psds['Muscles'], sem_pld_avg_psds['EcRest']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Muscles'][0].info, legend)
+fig.suptitle('Muscles VS Eyes Closed rest - Group statistics')

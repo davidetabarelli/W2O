@@ -3,6 +3,7 @@
 import mne;
 import numpy as np;
 import scipy as sp
+from functools import partial
 import matplotlib 
 import matplotlib.pyplot as plt
 
@@ -55,6 +56,7 @@ def spatial_spectra_1_samp_statistics(spectra, alpha=0.05, tail=0, permutations=
     
     
     T, cl, clp, _ = mne.stats.spatio_temporal_cluster_1samp_test(X, threshold=thr, n_permutations=permutations, tail=tail, stat_fun=mne.stats.ttest_1samp_no_p, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
+    
     sig_cl = np.argwhere(clp <= alpha).reshape(-1)
     
     res = {'T': T, 'cl': cl, 'clp': clp, 'sig_cl': sig_cl}

@@ -260,7 +260,10 @@ def plot_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, cl, T, 
                 lf_idx = f_idx[(fN*j):(fN*(j+1))]                
                 lc_idx = np.argwhere(np.sum(cl[sc][lf_idx,:], axis=0)).reshape(-1)
                                 
-                axs['TOPO_%d_%d' % (i,j+1)].set_title('# %d - T-Value (%.1f Hz)' % (i, np.mean(freqs[lf_idx])), fontsize=8, pad=0)
+                if nC <= 2:
+                    axs['TOPO_%d_%d' % (i,j+1)].set_title('# %d - T-Value (%.1f Hz)' % (i, np.mean(freqs[lf_idx])), fontsize=8, pad=0)
+                else:
+                    axs['TOPO_%d_%d' % (i,j+1)].set_title('# %d - F-Value (%.1f Hz)' % (i, np.mean(freqs[lf_idx])), fontsize=8, pad=0)
                 
                 mask_ch = np.full(len(info['ch_names']), False)
                 mask_ch[lc_idx] = True
@@ -415,7 +418,10 @@ def plot_fbands_power_cluster_summary(fb_spectra, sig_cl, clp, cl, T, info, cond
         fig.colorbar(im_S, axs['TOPO_CB_%d' % i])       
         
         axs['TOPO_CB_%d' % i].yaxis.set_ticks_position('left')
-        axs['TOPO_%d' % i].set_title('T-Value (p = %.2g)' % clp[sc], fontsize=10, pad=0)
+        if nC <= 2:
+            axs['TOPO_%d' % i].set_title('T-Value (p = %.2g)' % clp[sc], fontsize=10, pad=0)
+        else:
+            axs['TOPO_%d' % i].set_title('F-Value (p = %.2g)' % clp[sc], fontsize=10, pad=0)
         
         i = i + 1
     

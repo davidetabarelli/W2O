@@ -15,7 +15,7 @@ from w2o import utils
 
 # Compare spectra pooled - T-Test
 # IN: spectra = ( (N,F) , (N,F))
-def pooled_spectra_1_samp_statistics(spectra, alpha=0.05, tail=0, permutations=10000):
+def pooled_spectra_1_samp_t_test(spectra, alpha=0.05, tail=0, permutations=10000):
     
     # Create stat input
     if type(spectra[0]) == list:
@@ -39,7 +39,7 @@ def pooled_spectra_1_samp_statistics(spectra, alpha=0.05, tail=0, permutations=1
     
 # Compare spectra spatially - T-Test
 # IN: spectra = ( [AverageSpectrumObjects] , [AverageSpectrumObjects])
-def spatial_spectra_1_samp_statistics(spectra, alpha=0.05, tail=0, permutations=10000):
+def spatial_spectra_1_samp_t_test(spectra, alpha=0.05, tail=0, permutations=10000):
     
     # Get sample size
     N = len(spectra[0])
@@ -63,7 +63,7 @@ def spatial_spectra_1_samp_statistics(spectra, alpha=0.05, tail=0, permutations=
     return res
 
 # Compare spectra bands - T-Test
-def fbands_spectra_1_samp_statistics(spectra, info, alpha=0.05, tail=0, permutations=10000):
+def fbands_spectra_1_samp_t_test(spectra, info, alpha=0.05, tail=0, permutations=10000):
     
     # Get sample size
     N = len(spectra[0])
@@ -86,7 +86,7 @@ def fbands_spectra_1_samp_statistics(spectra, info, alpha=0.05, tail=0, permutat
     return res
 
 # Compare spectra pooled - F-Test
-def pooled_spectra_F_statistics(spectra, alpha=0.05, tail=0, permutations=10000):
+def pooled_spectra_1w_rm_ANOVA(spectra, alpha=0.05, tail=0, permutations=10000):
     
     # Create stat input
     if type(spectra[0]) == list:
@@ -125,7 +125,7 @@ def pooled_spectra_F_statistics(spectra, alpha=0.05, tail=0, permutations=10000)
 
 
 # Compare spectra spatially - F-Test
-def spatial_spectra_F_statistics(spectra, alpha=0.05, tail=0, permutations=10000):
+def spatial_spectra_1w_rm_ANOVA(spectra, alpha=0.05, tail=0, permutations=10000):
     
     # Prepare stat data
     X = [np.transpose(np.asarray([sp.get_data() for sp in spectra[i]]), (0,2,1)) for i in range(len(spectra))]
@@ -165,7 +165,7 @@ def spatial_spectra_F_statistics(spectra, alpha=0.05, tail=0, permutations=10000
 
 
 # Compare spectra bands - F-Test
-def fbands_spectra_F_statistics(spectra, info, alpha=0.05, permutations=10000):
+def fbands_spectra_1w_rm_ANOVA(spectra, info, alpha=0.05, permutations=10000):
     
     if type(spectra[0]) == list:
         X = [np.asarray(sp) for sp in spectra]

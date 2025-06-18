@@ -65,20 +65,20 @@ sem_pld_fb_psds = {ip : {fb: np.std(np.asarray(pld_fb_psds[ip][fb]), axis=0)/np.
 
 
 # Group statistical analysis on pooled spectra - T-Test comparison between VibOn and VibOff
-pld_stat = w2o.statistics.pooled_spectra_1_samp_statistics([pld_avg_psds['VibOn'], pld_avg_psds['VibOff']])
+pld_stat = w2o.statistics.pooled_spectra_1_samp_t_test([pld_avg_psds['VibOn'], pld_avg_psds['VibOff']])
 fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds['VibOn'], ga_pld_avg_psds['VibOff']], [sem_pld_avg_psds['VibOn'], sem_pld_avg_psds['VibOff']], freqs, pld_stat['sig_cl'], pld_stat['clp'], pld_stat['cl'], pld_stat['T'], legend)
 fig.suptitle('Group analisys - Pooled electrodes')
 
 
 # Group statistical analysis on spatially resolved spectra - T-Test comparison between VibOn and VibOff
-avg_stat = w2o.statistics.spatial_spectra_1_samp_statistics([avg_psds['VibOn'], avg_psds['VibOff']])
+avg_stat = w2o.statistics.spatial_spectra_1_samp_t_test([avg_psds['VibOn'], avg_psds['VibOff']])
 fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['VibOn'], ga_avg_psds['VibOff']], [sem_pld_avg_psds['VibOn'], sem_pld_avg_psds['VibOff']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['VibOn'][0].info, legend)
 fig.suptitle('Group analisys - Spatially resolved') 
 
 # Group statistical analysis on frequency bands, spatially resolved.
 fb_stat = {}
 for fb in fbands.keys():
-    fb_stat[fb] = w2o.statistics.fbands_spectra_1_samp_statistics([fb_psds['VibOn'][fb], fb_psds['VibOff'][fb]], avg_psds['VibOn'][0].info)    
+    fb_stat[fb] = w2o.statistics.fbands_spectra_1_samp_t_test([fb_psds['VibOn'][fb], fb_psds['VibOff'][fb]], avg_psds['VibOn'][0].info)    
     if len(fb_stat[fb]['sig_cl']) > 0:
         fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds['VibOn'][fb], fb_psds['VibOff'][fb]], fb_stat[fb]['sig_cl'], fb_stat[fb]['clp'], fb_stat[fb]['cl'], fb_stat[fb]['T'], avg_psds['VibOn'][0].info, conditions=['VibOn', 'VibOff'])
         fig.suptitle('%s (%.0f - %.0f Hz)' % (fb, fbands[fb][0], fbands[fb][1]))

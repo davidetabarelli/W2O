@@ -94,7 +94,7 @@ for s in range(N):
     
     stat_data = [[mne.time_frequency.SpectrumArray(psds[ip][s].get_data()[i,:,:], psds[ip][s].info, psds[ip][s].freqs) for i in range(nE)] for ip in psds.keys()]
     
-    lstat = w2o.statistics.spatial_spectra_1_samp_statistics(stat_data)
+    lstat = w2o.statistics.spatial_spectra_1_samp_t_test(stat_data)
     lsem = [np.std(np.mean(psds[ip][s].get_data(), axis=1), axis=0) for ip in psds.keys()]
     nE = np.max([len(psds['VibOn'][s]), len(psds['VibOff'][s])])
     

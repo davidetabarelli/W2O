@@ -99,16 +99,24 @@ def pooled_spectra_F_statistics(spectra, alpha=0.05, tail=0, permutations=10000)
     C = len(X)
     
     # Degrees
-    dfn = C - 1
-    dfd = N - C
+    #dfn = C - 1
+    #dfd = N - C
+    
+    # Adjacency
+    adj = mne.stats.combine_adjacency(X[0].shape[1])
+    
+    # One-way repeated-measures ANOVA
+    def stat_fun(*args):
+        # get f-values only.
+        return mne.stats.f_mway_rm(np.swapaxes(args, 1, 0), factor_levels=[C], effects='A', return_pvals=False)[0]
     
     # Statistical threshold
-    thr = sp.stats.f.ppf(1 - alpha, dfn=dfn, dfd=dfd)
+    #thr = sp.stats.f.ppf(1 - alpha, dfn=dfn, dfd=dfd)
+    thr = mne.stats.f_threshold_mway_rm(N, [C], 'A', alpha)
     
-    # Adjiacency
-    adj = mne.stats.combine_adjacency(X[0].shape[1])
 
-    F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=mne.stats.f_oneway, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
+    #F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=mne.stats.f_oneway, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
+    F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=stat_fun, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
     sig_cl = np.argwhere(clp <= alpha).reshape(-1)
     
     res = {'F': F, 'cl': cl, 'clp': clp, 'sig_cl': sig_cl}
@@ -129,18 +137,24 @@ def spatial_spectra_F_statistics(spectra, alpha=0.05, tail=0, permutations=10000
     C = len(X)
     
     # Degrees
-    dfn = C - 1
-    dfd = N - C
-
-    # Statistical threshold
-    thr = sp.stats.f.ppf(1 - alpha, dfn=dfn, dfd=dfd)
-    
+    #dfn = C - 1
+    #dfd = N - C
     
     # Adjacency
     sadj, ch_names = mne.channels.find_ch_adjacency(spectra[0][0].info, 'eeg')
     adj = mne.stats.combine_adjacency(len(spectra[0][0].freqs), sadj)
     
-    F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=mne.stats.f_oneway, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
+    # One-way repeated-measures ANOVA
+    def stat_fun(*args):
+        # get f-values only.
+        return mne.stats.f_mway_rm(np.swapaxes(args, 1, 0), factor_levels=[C], effects='A', return_pvals=False)[0]
+    
+    # Statistical threshold
+    #thr = sp.stats.f.ppf(1 - alpha, dfn=dfn, dfd=dfd)
+    thr = mne.stats.f_threshold_mway_rm(N, [C], 'A', alpha)
+    
+    # F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=mne.stats.f_oneway, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
+    F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=stat_fun, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
     
     sig_cl = np.argwhere(clp <= alpha).reshape(-1)
     
@@ -163,16 +177,23 @@ def fbands_spectra_F_statistics(spectra, info, alpha=0.05, permutations=10000):
     C = len(X)
     
     # Degrees
-    dfn = C - 1
-    dfd = N - C
-
-    # Statistical threshold
-    thr = sp.stats.f.ppf(1 - alpha, dfn=dfn, dfd=dfd)
-        
+    #dfn = C - 1
+    #dfd = N - C
+    
     # Adjacency
     adj, ch_names = mne.channels.find_ch_adjacency(info, 'eeg')   
     
-    F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=mne.stats.f_oneway, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
+    # One-way repeated-measures ANOVA
+    def stat_fun(*args):
+        # get f-values only.
+        return mne.stats.f_mway_rm(np.swapaxes(args, 1, 0), factor_levels=[C], effects='A', return_pvals=False)[0]
+    
+    # Statistical threshold
+    #thr = sp.stats.f.ppf(1 - alpha, dfn=dfn, dfd=dfd)
+    thr = mne.stats.f_threshold_mway_rm(N, [C], 'A', alpha)
+    
+    #F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=mne.stats.f_oneway, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
+    F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=stat_fun, adjacency=adj, n_jobs=utils.get_njobs(), seed=19579, out_type='mask')
     
     sig_cl = np.argwhere(clp <= alpha).reshape(-1)
     

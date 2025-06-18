@@ -15,7 +15,7 @@ from w2o import utils
 
 
 # Frequency bands definition
-def get_fbands_dict(mode='data_driven'):
+def get_fbands_dict(mode='standard'):
     
     fbands_dict = {}
     
@@ -31,7 +31,6 @@ def get_fbands_dict(mode='data_driven'):
         fbands_dict['Alpha'] = [8, 12]
         fbands_dict['Beta'] = [13, 30]
         fbands_dict['Gamma'] = [31, 40] 
-    
     if mode == 'data_driven':
         fbands_dict['Delta'] = [2, 4]    
         fbands_dict['Theta'] = [4, 7]

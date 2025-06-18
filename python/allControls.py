@@ -75,15 +75,14 @@ avg_stat = w2o.statistics.spatial_spectra_1_samp_statistics([avg_psds['VibOn'], 
 fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['VibOn'], ga_avg_psds['VibOff']], [sem_pld_avg_psds['VibOn'], sem_pld_avg_psds['VibOff']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['VibOn'][0].info, legend)
 fig.suptitle('Group analisys - Spatially resolved') 
 
-# Group statistical analysis on frequency bands ... come? Spatial o no?
+# Group statistical analysis on frequency bands, spatially resolved.
 fb_stat = {}
 for fb in fbands.keys():
-    fb_stat[fb] = w2o.statistics.fbands_spectra_1_samp_statistics([fb_psds['VibOn'][fb], fb_psds['VibOff'][fb]], avg_psds['VibOn'][0].info)
-    fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds['VibOn'][fb], fb_psds['VibOff'][fb]], fb_stat[fb]['sig_cl'], fb_stat[fb]['clp'], fb_stat[fb]['cl'], fb_stat[fb]['T'], avg_psds['VibOn'][0].info, conditions=['VibOn', 'VibOff'])
-    fig.suptitle('%s' % fb)
+    fb_stat[fb] = w2o.statistics.fbands_spectra_1_samp_statistics([fb_psds['VibOn'][fb], fb_psds['VibOff'][fb]], avg_psds['VibOn'][0].info)    
+    if len(fb_stat[fb]['sig_cl']) > 0:
+        fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds['VibOn'][fb], fb_psds['VibOff'][fb]], fb_stat[fb]['sig_cl'], fb_stat[fb]['clp'], fb_stat[fb]['cl'], fb_stat[fb]['T'], avg_psds['VibOn'][0].info, conditions=['VibOn', 'VibOff'])
+        fig.suptitle('%s (%.0f - %.0f Hz)' % (fb, fbands[fb][0], fbands[fb][1]))
 
-
-# PLOT ...
 
 # Single subject statistical comparison, spatially resolved
 all_subj_stats = []
@@ -105,8 +104,6 @@ for s in range(N):
         fig, axs = w2o.viz.plot_power_cluster_summary([avg_psds['VibOn'][s].get_data(), avg_psds['VibOff'][s].get_data()], lsem, freqs, lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], psds['VibOn'][s][0].info, legend)
         fig.suptitle('Subject %s (%d epochs)' % (subject, nE))
     
-    
-
 
 
 

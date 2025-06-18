@@ -15,7 +15,7 @@ subjects, N = w2o.dataset.get_subjects()
 
 # Periods of interest
 iperiods = ['FixRest', 'EcRest', 'Muscles', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
-norm_period = 'FixRest'
+norm_period = []
 
 # Frequency bands
 fbands = w2o.spectral.get_fbands_dict()
@@ -60,6 +60,28 @@ ga_pld_fb_psds = {ip : {fb: np.mean(np.asarray(pld_fb_psds[ip][fb]), axis=0) for
 sem_pld_fb_psds = {ip : {fb: np.std(np.asarray(pld_fb_psds[ip][fb]), axis=0)/np.sqrt(N) for fb in pld_fb_psds[ip].keys()} for ip in pld_fb_psds.keys()}
 
 
+# Periods for F-tests
+#stat_periods = ['FixRest', 'EcRest', 'Muscles', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
+stat_periods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm']
+
+# Info structure
+info = avg_psds['Orgasm'][0].info
+
+# Pooled electrodes F-Test
+pld_F_stat = w2o.statistics.pooled_spectra_F_statistics([pld_avg_psds[k] for k in stat_periods])
+fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds[k] for k in stat_periods], [sem_pld_avg_psds[k] for k in stat_periods], freqs, pld_F_stat['sig_cl'], pld_F_stat['clp'], pld_F_stat['cl'], pld_F_stat['F'], stat_periods)
+
+# Spatially resolved F-Test
+F_stat = w2o.statistics.spatial_spectra_F_statistics([avg_psds[k] for k in stat_periods])
+fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds[k] for k in stat_periods], [sem_pld_avg_psds[k] for k in stat_periods], freqs, F_stat['sig_cl'], F_stat['clp'], F_stat['cl'], F_stat['F'], info, stat_periods)
+
+# Frequency bands spatially resolved F-Test
+fb_F_stat = {}
+for fb in fbands.keys():
+    fb_F_stat[fb] = w2o.statistics.fbands_spectra_F_statistics([fb_psds[sp][fb] for sp in stat_periods], info)
+    if len(fb_F_stat[fb]['sig_cl']) > 0:
+        fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds[sp][fb] for sp in stat_periods], fb_F_stat[fb]['sig_cl'], fb_F_stat[fb]['clp'], fb_F_stat[fb]['cl'], fb_F_stat[fb]['F'], info, conditions=stat_periods)
+        fig.suptitle('%s (%.0f - %.0f Hz)' % (fb, fbands[fb][0], fbands[fb][1]))
 
 ###### Preliminary ...
 

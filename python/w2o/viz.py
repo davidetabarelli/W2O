@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 
 def get_color_cycle():
-    return ['r', 'b', 'g', 'y', 'c', 'k']
+    return ['r', 'b', 'g', 'y', 'c', 'k', 'm']
     
 
 def get_vlims(data, real=False):
@@ -84,6 +84,12 @@ def get_vlims_and_transparent_colormap(data, base_colormap='jet'):
     
 def plot_pooled_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, cl, T, legend=[]):
     
+    # Number of conditions
+    nC = len(spectra)
+    
+    # Colors
+    clrs = get_color_cycle()[0:nC]
+    
     # General font size
     mpl.rcParams["font.size"] = 10
     
@@ -107,8 +113,8 @@ def plot_pooled_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, 
     axs['PLOT'].set_ylabel('EEG power')
     
     # All channels spectra
-    axs['PLOT'].semilogy(freqs, spectra[0], 'r--', linewidth=0.5)
-    axs['PLOT'].semilogy(freqs, spectra[1], 'b--', linewidth=0.5)
+    for c in range(nC):
+        axs['PLOT'].semilogy(freqs, spectra[c], '--', linewidth=0.5, color=clrs[c])
     
     # Clusters
     if len(sig_cl) != 0:
@@ -118,8 +124,8 @@ def plot_pooled_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, 
             
             f_idx = np.argwhere(cl[sc]).reshape(-1)
             
-            axs['PLOT'].semilogy(freqs[f_idx], spectra[0][f_idx], 'r', linewidth=2)
-            axs['PLOT'].semilogy(freqs[f_idx], spectra[1][f_idx], 'b', linewidth=2)
+            for c in range(nC):
+                axs['PLOT'].semilogy(freqs[f_idx], spectra[c][f_idx], '', linewidth=2, color=clrs[c])
             
             if i == 1:
                 axs['PLOT'].legend(legend)
@@ -130,8 +136,8 @@ def plot_pooled_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, 
             i = i + 1
         
     if len(sem_spectra) != 0:
-        axs['PLOT'].fill_between(freqs, spectra[0] - sem_spectra[0], spectra[0] + sem_spectra[0], alpha=0.1, color='r')
-        axs['PLOT'].fill_between(freqs, spectra[1] - sem_spectra[1], spectra[1] + sem_spectra[1], alpha=0.1, color='b')
+        for c in range(nC):
+            axs['PLOT'].fill_between(freqs, spectra[c] - sem_spectra[c], spectra[c] + sem_spectra[c], alpha=0.1, color=clrs[c])
 
     return fig, axs
     
@@ -362,7 +368,7 @@ def plot_fbands_power_cluster_summary(fb_spectra, sig_cl, clp, cl, T, info, cond
     [[axs['PTS_ALL'].plot(X[c], ldata[c][s], '+', color=clrs[c], alpha=0.3) for s in range(N)] for c in range(nC)]
     [axs['PTS_ALL'].plot(X[c:(c+2)], [np.mean([ldata[c][s] for s in range(N)]), np.mean([ldata[c+1][s] for s in range(N)])], 'k-') for c in range(nC-1)]
     [axs['PTS_ALL'].plot(X[c], np.mean([ldata[c][s] for s in range(N)]), 'o', color=clrs[c]) for c in range(nC)]
-    axs['PTS_ALL'].set_xlim([X[0]-0.25, X[1]+0.25])
+    axs['PTS_ALL'].set_xlim([X[0]-0.25, X[-1]+0.25])
     axs['PTS_ALL'].set_xticks(X)
     axs['PTS_ALL'].set_xticklabels(conditions, rotation=30, ha='right')
     
@@ -389,7 +395,7 @@ def plot_fbands_power_cluster_summary(fb_spectra, sig_cl, clp, cl, T, info, cond
         [[axs['PTS_%d' % i].plot(X[c], ldata[c][s], '+', color=clrs[c], alpha=0.3) for s in range(N)] for c in range(nC)]
         [axs['PTS_%d' % i].plot(X[c:(c+2)], [np.mean([ldata[c][s] for s in range(N)]), np.mean([ldata[c+1][s] for s in range(N)])], 'k-') for c in range(nC-1)]
         [axs['PTS_%d' % i].plot(X[c], np.mean([ldata[c][s] for s in range(N)]), 'o', color=clrs[c]) for c in range(nC)]
-        axs['PTS_%d' % i].set_xlim([X[0]-0.25, X[1]+0.25])
+        axs['PTS_%d' % i].set_xlim([X[0]-0.25, X[-1]+0.25])
         axs['PTS_%d' % i].set_xticks(X)
         
         mask_ch = np.full(len(info['ch_names']), False)

@@ -15,7 +15,7 @@ from w2o import utils
 
 
 # Frequency bands definition
-def get_fbands_dict(mode='standard'):
+def get_fbands_dict(mode='data_driven'):
     
     fbands_dict = {}
     
@@ -111,17 +111,17 @@ def get_periods_psds(subject, periods=[], norm_period=[]):
         
     
     
+    # If selected normalize PSD on selected normalization period 
+    if norm_period != []:
+        for ip in p_psds.keys():
+            ff_idx = np.argwhere(np.isin(p_psds[norm_period].freqs, p_psds[ip].freqs)).reshape(-1)
+            bsln = p_psds[norm_period].copy().average().get_data()[:,ff_idx]
+            ndata = (p_psds[ip].get_data() / bsln[np.newaxis,:,:])
+            p_psds[ip] = mne.time_frequency.EpochsSpectrumArray(ndata, p_psds[ip].info, p_psds[ip].freqs)
+    
     # Average PSD
     avg_p_psds = {ip : p_psds[ip].copy().average() for ip in p_psds.keys()}
     
-    # If selected normalize PSD on selected normalization period 
-    if norm_period != []:
-        for ip in avg_p_psds.keys():
-            ff_idx = np.argwhere(np.isin(avg_p_psds[norm_period].freqs, avg_p_psds[ip].freqs)).reshape(-1)
-            #ndata = 10.0 * np.log10( avg_p_psds[ip].get_data() / avg_p_psds[norm_period].get_data()[:,ff_idx] )
-            ndata = avg_p_psds[ip].get_data() / avg_p_psds[norm_period].get_data()[:,ff_idx]
-            avg_p_psds[ip] = mne.time_frequency.SpectrumArray(ndata, avg_p_psds[ip].info, avg_p_psds[ip].freqs)
-
     
     # Create fbands. Created from averaged (and eventually normalized) spectra
     fb_p_psds = {}

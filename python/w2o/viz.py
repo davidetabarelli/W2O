@@ -246,6 +246,7 @@ def plot_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, cl, T, 
             else:
                 fN = int(np.ceil(len(f_idx) / 4))
                 n_cols = int(len(f_idx)/fN)
+                n_cols = int(np.ceil(len(f_idx)/fN))
             
             lTs = []
             for j in range(n_cols):

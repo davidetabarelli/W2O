@@ -15,7 +15,8 @@ def get_njobs():
 
     if socket.gethostname()[:18] == 'MacBook-Pro-Davide':
         return 16
-    
+    if socket.gethostname()[:10] == 'MBP-Davide':
+        return 16        
     if socket.gethostname()[:12] == 'meg-server-4':
         return 64
     

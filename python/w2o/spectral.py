@@ -102,9 +102,9 @@ def get_periods_psds(subject, periods=[], norm_period=[]):
     for ip in p_epochs.keys():
         
         if np.isin(ip, ['VibOn', 'VibOff']):
-            p_psds[ip] = p_epochs[ip].compute_psd(method='multitaper', fmin=1.0, fmax=45, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False)            
+            p_psds[ip] = p_epochs[ip].compute_psd(method='multitaper', fmin=1.0, fmax=45, bandwidth=2, proj=True, n_jobs=utils.get_njobs(), adaptive=False, low_bias=False)            
         else:
-            p_psds[ip] = p_epochs[ip].compute_psd(method='multitaper', fmin=1.0, fmax=45, bandwidth=2, proj=True, n_jobs=16, adaptive=False, low_bias=False)
+            p_psds[ip] = p_epochs[ip].compute_psd(method='multitaper', fmin=1.0, fmax=45, bandwidth=2, proj=True, n_jobs=utils.get_njobs(), adaptive=False, low_bias=False)
         
         freqs[ip] = p_psds[ip].freqs
         

@@ -17,8 +17,8 @@ subjects, N = w2o.dataset.get_subjects()
 
 
 # Periods of interest
-iperiods = ['EcRest', 'Muscles', 'Orgasm']
-norm_period = []
+iperiods = ['EcRest', 'Muscles', 'Orgasm', 'FixRest']
+norm_period = 'FixRest'
 
 # Frequency bands
 fbands = w2o.spectral.get_fbands_dict()
@@ -42,6 +42,13 @@ for subject in subjects:
 
     # Frequencies (all the same)
     freqs = lres[3][iperiods[0]]
+    
+
+# Epochs number
+n_epochs = {}
+for ip in iperiods:
+    n_epochs[ip] = np.asarray([psds[ip][s].shape[0] for s in range(N)])
+
     
     
 # Compute electrode pooled (average) data
@@ -91,6 +98,7 @@ for fb in fbands.keys():
 
 # Post hoc
 ph_combs = list(itertools.combinations(stat_periods,2))
+ph_combs = [(pc[1],pc[0]) for pc in ph_combs]  # Invert order
 
 # Pooled electrodes
 pld_F_stat['post_hoc'] = {}
@@ -110,25 +118,31 @@ for pc in ph_combs:
     if len(lstat['sig_cl']) > 0:
         fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds[k] for k in pc], [sem_pld_avg_psds[k] for k in pc], freqs, lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], info, pc)
         fig.suptitle('Spatially resolved %s vs %s T-Test' % (pc[0], pc[1]))
-        
-        
-        
+
+
 # Frequency bands spatially resolved
 for fb in fbands.keys():
     fb_F_stat[fb]['post_hoc'] = {}
     for pc in ph_combs:
-        lstat = w2o.statistics.fbands_spectra_1w_rm_ANOVA([fb_psds[sp][fb] for sp in pc], info)
+        lstat = w2o.statistics.fbands_spectra_1_samp_t_test([fb_psds[sp][fb] for sp in pc], info)
         fb_F_stat[fb]['post_hoc']['%s_%s' % (pc[0], pc[1])] = lstat
         if len(lstat['sig_cl']) > 0:
-            fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds[sp][fb] for sp in pc], lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['F'], info, conditions=pc)
+            fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds[sp][fb] for sp in pc], lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], info, conditions=pc)
             fig.suptitle('%s (%.0f - %.0f Hz) - %s vs %s T-Test' % (fb, fbands[fb][0], fbands[fb][1], pc[0], pc[1]))
 
 
-    
+tmp = []
+pc = ph_combs[0]
+for fb in fbands.keys():
+    lstat = fb_F_stat[fb]['post_hoc']['%s_%s' % (pc[0], pc[1])]
+    if len(lstat['sig_cl']) > 0:
+        fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds[sp][fb] for sp in pc], lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], info, conditions=pc)
+        fig.suptitle('%s (%.0f - %.0f Hz) - %s vs %s T-Test' % (fb, fbands[fb][0], fbands[fb][1], pc[0], pc[1]))
+        tmp.append(fig)
 
         
 # Save all results
-# Big res dictionary ...
+##### Big res dictionary ...
 
 
 

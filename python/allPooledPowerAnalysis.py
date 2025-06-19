@@ -15,8 +15,9 @@ subjects, N = w2o.dataset.get_subjects()
 
 
 # Periods of interest
-iperiods = ['FixRest', 'EcRest', 'Muscles', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
-norm_period = []
+iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']
+norm_period = 'FixRest'
+#norm_period = []
 
 # Frequency bands
 fbands = w2o.spectral.get_fbands_dict()
@@ -42,6 +43,15 @@ for subject in subjects:
     freqs = lres[3][iperiods[0]]
     
     
+    
+# Epochs number
+n_epochs = {}
+for ip in iperiods:
+    n_epochs[ip] = np.asarray([psds[ip][s].shape[0] for s in range(N)])
+    
+[[np.min(ne), np.max(ne), np.mean(ne)] for ne in n_epochs.values()]
+    
+
 # Compute electrode pooled (average) data
 pld_avg_psds = {ip: [np.mean(avg_psds[ip][s].get_data(), axis=0) for s in range(N)] for ip in psds.keys()}
 pld_fb_psds = {ip : {fb : [np.mean(fb_psds[ip][fb][s], axis=0) for s in range(N)] for fb in fbands.keys()} for ip in fb_psds.keys()}
@@ -61,13 +71,28 @@ ga_pld_fb_psds = {ip : {fb: np.mean(np.asarray(pld_fb_psds[ip][fb]), axis=0) for
 sem_pld_fb_psds = {ip : {fb: np.std(np.asarray(pld_fb_psds[ip][fb]), axis=0)/np.sqrt(N) for fb in pld_fb_psds[ip].keys()} for ip in pld_fb_psds.keys()}
 
 
-# Periods for F-tests
-#stat_periods = ['EcRest', 'Muscles', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
-stat_periods = ['FixRest', 'EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
-#stat_periods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm']
+# Periods for statistical tests
+if norm_period == []:
+    stat_periods = iperiods
+else:
+    stat_periods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
 
 # Info structure
 info = avg_psds['Orgasm'][0].info
+
+
+# Simple spectra plot
+if norm_period == []:
+    fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds[k] for k in iperiods], [sem_pld_avg_psds[k] for k in iperiods], freqs, [], [], [], [], iperiods)
+else:
+    fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds[k] for k in stat_periods], [sem_pld_avg_psds[k] for k in stat_periods], freqs, [], [], [], [], stat_periods)
+[line.set_linewidth(1.5) for line in axs['PLOT'].lines]
+[line.set_linestyle('-') for line in axs['PLOT'].lines]
+axs['PLOT'].legend(stat_periods)
+if norm_period == []:
+    fig.suptitle('Non normalized power spectra')
+else:
+    fig.suptitle('%s normalized power spectra' % norm_period)
 
 
 
@@ -91,65 +116,4 @@ for fb in fbands.keys():
 
 # Post hoc
 ph_combs = list(itertools.combinations(stat_periods,2))
-
-
-
-
-#####
-
-###### Preliminary ...
-
-# avg_stat = w2o.statistics.spatial_spectra_1_samp_t_test([avg_psds['Orgasm'], avg_psds['EcRest']], 0.01)
-# fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['Orgasm'], ga_avg_psds['EcRest']], [sem_pld_avg_psds['Orgasm'], sem_pld_avg_psds['EcRest']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Orgasm'][0].info, ['Orgasm', 'Eyes closed Rest'])
-# fig.suptitle('Orgasm VS Eyes Closed rest - Group statistics')
-
-# avg_stat = w2o.statistics.spatial_spectra_1_samp_t_test([avg_psds['Orgasm'], avg_psds['Muscles']], 0.01)
-# fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['Orgasm'], ga_avg_psds['Muscles']], [sem_pld_avg_psds['Orgasm'], sem_pld_avg_psds['Muscles']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Orgasm'][0].info, ['Orgasm', 'Muscles'])
-# fig.suptitle('Orgasm VS Muscles - Group statistics')
-
-# avg_stat = w2o.statistics.spatial_spectra_1_samp_t_test([avg_psds['Muscles'], avg_psds['EcRest']], 0.01)
-# fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['Muscles'], ga_avg_psds['EcRest']], [sem_pld_avg_psds['Muscles'], sem_pld_avg_psds['EcRest']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Muscles'][0].info, ['Muscles', 'Eyes closed Rest'])
-# fig.suptitle('Muscles VS Eyes Closed rest - Group statistics')
-
-
-# avg_stat = w2o.statistics.spatial_spectra_1_samp_statistics([avg_psds['Masturbation'], avg_psds['EcRest']], 0.01)
-# fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['Masturbation'], ga_avg_psds['EcRest']], [sem_pld_avg_psds['Masturbation'], sem_pld_avg_psds['EcRest']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Masturbation'][0].info, ['Masturbation', 'Eyes closed Rest'])
-# fig.suptitle('Masturbation VS Eyes Closed rest - Group statistics')
-
-# avg_stat = w2o.statistics.spatial_spectra_1_samp_statistics([avg_psds['Pleateau'], avg_psds['EcRest']], 0.01)
-# fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['Pleateau'], ga_avg_psds['EcRest']], [sem_pld_avg_psds['Pleateau'], sem_pld_avg_psds['EcRest']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Pleateau'][0].info, ['Pleateau', 'Eyes closed Rest'])
-# fig.suptitle('Pleateau VS Eyes Closed rest - Group statistics')
-
-# avg_stat = w2o.statistics.spatial_spectra_1_samp_statistics([avg_psds['Resolution'], avg_psds['EcRest']], 0.01)
-# fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds['Resolution'], ga_avg_psds['EcRest']], [sem_pld_avg_psds['Resolution'], sem_pld_avg_psds['EcRest']], freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['T'], avg_psds['Resolution'][0].info, ['Resolution', 'Eyes closed Rest'])
-# fig.suptitle('Resolution VS Eyes Closed rest - Group statistics')
-
-
-
-# info = avg_psds['EcRest'][0].info
-# fband = 'Beta'
-# avg_stat = w2o.statistics.fbands_spectra_F_statistics([fb_psds['EcRest'][fband], fb_psds['Orgasm'][fband], fb_psds['Muscles'][fband], fb_psds['Masturbation'][fband]], info)
-
-
-
-# avg_stat = w2o.statistics.spatial_spectra_F_statistics([avg_psds['EcRest'], avg_psds['Masturbation'], avg_psds['Pleateau'], avg_psds['Orgasm'], avg_psds['Muscles'], avg_psds['Resolution']])
-# fig, axs = w2o.viz.plot_power_cluster_summary(  [ga_avg_psds['EcRest'], ga_avg_psds['Masturbation'], ga_avg_psds['Pleateau'], ga_avg_psds['Orgasm'], ga_avg_psds['Muscles'], ga_avg_psds['Resolution']], 
-#                                                 [sem_pld_avg_psds['EcRest'], sem_pld_avg_psds['Masturbation'], sem_pld_avg_psds['Pleateau'], sem_pld_avg_psds['Orgasm'], sem_pld_avg_psds['Muscles'], sem_pld_avg_psds['Resolution']], 
-#                                                 freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['F'], avg_psds['EcRest'][0].info, 
-#                                                 ['EcRest', 'Masturbation', 'Pleauteau', 'Orgasm', 'Muscles', 'Resolution'])
-
-# avg_stat = w2o.statistics.spatial_spectra_F_statistics([avg_psds['Masturbation'], avg_psds['Pleateau'], avg_psds['Orgasm'], avg_psds['Resolution']])
-# fig, axs = w2o.viz.plot_power_cluster_summary(  [ga_avg_psds['Masturbation'], ga_avg_psds['Pleateau'], ga_avg_psds['Orgasm'], ga_avg_psds['Resolution']], 
-#                                                 [sem_pld_avg_psds['Masturbation'], sem_pld_avg_psds['Pleateau'], sem_pld_avg_psds['Orgasm'], sem_pld_avg_psds['Resolution']], 
-#                                                 freqs, avg_stat['sig_cl'], avg_stat['clp'], avg_stat['cl'], avg_stat['F'], avg_psds['EcRest'][0].info, 
-#                                                 ['Masturbation', 'Pleauteau', 'Orgasm', 'Resolution'])
-
-# fb_stat = {}
-# for fb in fbands.keys():
-    
-#     fb_stat[fb] = w2o.statistics.fbands_spectra_1_samp_statistics([fb_psds['EcRest'][fb], fb_psds['Masturbation'][fb], fb_psds['Pleateau'][fb], fb_psds['Orgasm'][fb]], avg_psds['EcRest'][0].info)
-    
-#     fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds['EcRest'][fb], fb_psds['Masturbation'][fb], fb_psds['Pleateau'][fb], fb_psds['Orgasm'][fb]], fb_stat[fb]['sig_cl'], fb_stat[fb]['clp'], fb_stat[fb]['cl'], fb_stat[fb]['T'], avg_psds['EcRest'][0].info, conditions=['EcRest', 'Masturbation', 'Pleateau', 'Orgasm'])
-#     fig.suptitle('%s' % fb)
-
 

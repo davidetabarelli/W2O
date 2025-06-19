@@ -14,8 +14,12 @@ from w2o import utils
 #### FUNCTIONS
 
 
+# Get spectra definition
+def get_spectral_limits():
+    return [1, 45]
+
 # Frequency bands definition
-def get_fbands_dict(mode='standard'):
+def get_fbands_dict(mode='extended'):
     
     fbands_dict = {}
     
@@ -36,7 +40,17 @@ def get_fbands_dict(mode='standard'):
         fbands_dict['Theta'] = [4, 7]
         fbands_dict['Alpha'] = [8, 13]
         fbands_dict['Beta'] = [16, 27]
-        fbands_dict['Gamma'] = [31, 44]         
+        fbands_dict['Gamma'] = [31, 44]   
+    if mode == 'extended':
+        fbands_dict['Delta'] = [2, 4]    
+        fbands_dict['Theta'] = [4, 7]
+        fbands_dict['Alpha'] = [8, 12]
+        fbands_dict['Beta'] = [13, 30]
+        if get_spectral_limits()[1] > 50:
+            fbands_dict['LGamma'] = [31, 45]   
+            fbands_dict['HGamma'] = [55, 95]
+        else:
+            fbands_dict['Gamma'] = [31, 45]   
         
     
     return fbands_dict
@@ -102,9 +116,9 @@ def get_periods_psds(subject, periods=[], norm_period=[]):
     for ip in p_epochs.keys():
         
         if np.isin(ip, ['VibOn', 'VibOff']):
-            p_psds[ip] = p_epochs[ip].compute_psd(method='multitaper', fmin=1.0, fmax=45, bandwidth=2, proj=True, n_jobs=utils.get_njobs(), adaptive=False, low_bias=False)            
+            p_psds[ip] = p_epochs[ip].compute_psd(method='multitaper', fmin=get_spectral_limits()[0], fmax=get_spectral_limits()[1], bandwidth=2, proj=True, n_jobs=utils.get_njobs(), adaptive=False, low_bias=False)            
         else:
-            p_psds[ip] = p_epochs[ip].compute_psd(method='multitaper', fmin=1.0, fmax=45, bandwidth=2, proj=True, n_jobs=utils.get_njobs(), adaptive=False, low_bias=False)
+            p_psds[ip] = p_epochs[ip].compute_psd(method='multitaper', fmin=get_spectral_limits()[0], fmax=get_spectral_limits()[1], bandwidth=2, proj=True, n_jobs=utils.get_njobs(), adaptive=False, low_bias=False)
         
         freqs[ip] = p_psds[ip].freqs
         
@@ -112,10 +126,10 @@ def get_periods_psds(subject, periods=[], norm_period=[]):
     
     # If selected normalize PSD on selected normalization period 
     if norm_period != []:
+        bsln = p_psds[norm_period].copy().average().get_data()
         for ip in p_psds.keys():
             ff_idx = np.argwhere(np.isin(p_psds[norm_period].freqs, p_psds[ip].freqs)).reshape(-1)
-            bsln = p_psds[norm_period].copy().average().get_data()[:,ff_idx]
-            ndata = (p_psds[ip].get_data() / bsln[np.newaxis,:,:])
+            ndata = (p_psds[ip].get_data() / bsln[np.newaxis,:,ff_idx])
             p_psds[ip] = mne.time_frequency.EpochsSpectrumArray(ndata, p_psds[ip].info, p_psds[ip].freqs)
     
     # Average PSD
@@ -137,3 +151,6 @@ def get_periods_psds(subject, periods=[], norm_period=[]):
         
     
     return p_psds, avg_p_psds, fb_p_psds, freqs
+
+
+

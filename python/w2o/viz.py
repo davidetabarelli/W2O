@@ -372,6 +372,7 @@ def plot_fbands_power_cluster_summary(fb_spectra, sig_cl, clp, cl, T, info, cond
     [[axs['PTS_ALL'].plot(X[c], ldata[c][s], '+', color=clrs[c], alpha=0.3) for s in range(N)] for c in range(nC)]
     [axs['PTS_ALL'].plot(X[c:(c+2)], [np.mean([ldata[c][s] for s in range(N)]), np.mean([ldata[c+1][s] for s in range(N)])], 'k-') for c in range(nC-1)]
     [axs['PTS_ALL'].plot(X[c], np.mean([ldata[c][s] for s in range(N)]), 'o', color=clrs[c]) for c in range(nC)]
+    axs['PTS_ALL'].set_yscale('log')
     axs['PTS_ALL'].set_xlim([X[0]-0.25, X[-1]+0.25])
     axs['PTS_ALL'].set_xticks(X)
     axs['PTS_ALL'].set_xticklabels(conditions, rotation=30, ha='right')
@@ -399,6 +400,7 @@ def plot_fbands_power_cluster_summary(fb_spectra, sig_cl, clp, cl, T, info, cond
         [[axs['PTS_%d' % i].plot(X[c], ldata[c][s], '+', color=clrs[c], alpha=0.3) for s in range(N)] for c in range(nC)]
         [axs['PTS_%d' % i].plot(X[c:(c+2)], [np.mean([ldata[c][s] for s in range(N)]), np.mean([ldata[c+1][s] for s in range(N)])], 'k-') for c in range(nC-1)]
         [axs['PTS_%d' % i].plot(X[c], np.mean([ldata[c][s] for s in range(N)]), 'o', color=clrs[c]) for c in range(nC)]
+        axs['PTS_%d' % i].set_yscale('log')
         axs['PTS_%d' % i].set_xlim([X[0]-0.25, X[-1]+0.25])
         axs['PTS_%d' % i].set_xticks(X)
         

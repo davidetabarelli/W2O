@@ -96,23 +96,22 @@ for s in range(N):
     
     subject = subjects[s]
     
-    nE = np.min([len(psds['VibOn'][s]), len(psds['VibOff'][s])])
+    nE = np.min([psds['VibOn'][s].shape[0], psds['VibOff'][s].shape[0]])
     
     stat_data = [[mne.time_frequency.SpectrumArray(psds[ip][s].get_data()[i,:,:], psds[ip][s].info, psds[ip][s].freqs) for i in range(nE)] for ip in psds.keys()]
     
     lstat = w2o.statistics.spatial_spectra_1_samp_t_test(stat_data)
-    lsem = [np.std(np.mean(psds[ip][s].get_data(), axis=1), axis=0) for ip in psds.keys()]
-    nE = np.max([len(psds['VibOn'][s]), len(psds['VibOff'][s])])
-    
+    lsem = [np.std(np.mean(psds[ip][s].get_data()[:nE,:,:], axis=1), axis=0) for ip in psds.keys()]
+        
     all_subj_stats.append(lstat)
     
     if len(lstat['sig_cl']) > 0:
-        fig, axs = w2o.viz.plot_power_cluster_summary([avg_psds['VibOn'][s].get_data(), avg_psds['VibOff'][s].get_data()], lsem, freqs, lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], psds['VibOn'][s][0].info, legend)
-        fig.suptitle('Subject %s (%d epochs)' % (subject, nE))
+        fig, axs = w2o.viz.plot_power_cluster_summary([avg_psds['VibOn'][s].get_data(), avg_psds['VibOff'][s].get_data()], lsem, freqs, lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], psds['VibOn'][0].info, legend)
+        fig.suptitle('Subject %s - Epochs %d' % (subject, nE))
         subs_figs.append(fig)
     else:
         subs_figs.append(None)
-    
+
 
 
 

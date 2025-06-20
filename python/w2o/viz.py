@@ -16,7 +16,8 @@ import matplotlib.pyplot as plt
 
 
 def get_color_cycle():
-    return ['r', 'b', 'g', 'y', 'c', 'k', 'm']
+    #return [vl for vl in mpl.colors.XKCD_COLORS.values()][0:20]
+    return ['r', 'b', 'g', 'y', 'c', 'k', 'm', 'darkviolet', 'gray', 'tan', 'dodgerblue', 'navy']
     
 
 def get_vlims(data, real=False):

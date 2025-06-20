@@ -44,13 +44,7 @@ for subject in subjects:
     freqs = lres[3][iperiods[0]]
     
 
-# Epochs number
-n_epochs = {}
-for ip in iperiods:
-    n_epochs[ip] = np.asarray([psds[ip][s].shape[0] for s in range(N)])
 
-    
-    
 # Compute electrode pooled (average) data
 pld_avg_psds = {ip: [np.mean(avg_psds[ip][s].get_data(), axis=0) for s in range(N)] for ip in psds.keys()}
 pld_fb_psds = {ip : {fb : [np.mean(fb_psds[ip][fb][s], axis=0) for s in range(N)] for fb in fbands.keys()} for ip in fb_psds.keys()}
@@ -131,16 +125,6 @@ for fb in fbands.keys():
             fig.suptitle('%s (%.0f - %.0f Hz) - %s vs %s T-Test' % (fb, fbands[fb][0], fbands[fb][1], pc[0], pc[1]))
 
 
-tmp = []
-pc = ph_combs[0]
-for fb in fbands.keys():
-    lstat = fb_F_stat[fb]['post_hoc']['%s_%s' % (pc[0], pc[1])]
-    if len(lstat['sig_cl']) > 0:
-        fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds[sp][fb] for sp in pc], lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], info, conditions=pc)
-        fig.suptitle('%s (%.0f - %.0f Hz) - %s vs %s T-Test' % (fb, fbands[fb][0], fbands[fb][1], pc[0], pc[1]))
-        tmp.append(fig)
-
-        
 # Save all results
 ##### Big res dictionary ...
 

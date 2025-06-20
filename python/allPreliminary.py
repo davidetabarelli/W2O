@@ -64,6 +64,13 @@ ax.set_xlim((ax.get_xlim()[0] - 10,ax.get_xlim()[1] + 10))
 
 
 
+# Epochs
+n_epochs = {}
+for ip in iperiods:
+    n_epochs[ip] = np.asarray([psds[ip][s].shape[0] for s in range(N)])
+
+
+
 # Load and visualize non normalized spectra
 periods = ['EcRest', 'VibOn', 'VibOff', 'Muscles',  'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']
 nperiods = ['EcRest', 'VibOn', 'VibOff', 'Muscles', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']

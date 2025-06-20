@@ -17,14 +17,9 @@ subjects, N = w2o.dataset.get_subjects()
 # Periods of interest
 iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']
 norm_period = 'FixRest'
-#norm_period = []
 
 # Frequency bands
 fbands = w2o.spectral.get_fbands_dict()
-
-# Stat plots legend
-#legend = ['Vib On (all)', 'Vib Off (all)', 'Vib On (cluster)', 'VibOff (cluster)']
-legend=[]
 
 
 # Get subjects' spectra
@@ -43,14 +38,7 @@ for subject in subjects:
     freqs = lres[3][iperiods[0]]
     
     
-    
-# Epochs number
-n_epochs = {}
-for ip in iperiods:
-    n_epochs[ip] = np.asarray([psds[ip][s].shape[0] for s in range(N)])
-    
-[[np.min(ne), np.max(ne), np.mean(ne)] for ne in n_epochs.values()]
-    
+
 
 # Compute electrode pooled (average) data
 pld_avg_psds = {ip: [np.mean(avg_psds[ip][s].get_data(), axis=0) for s in range(N)] for ip in psds.keys()}
@@ -71,6 +59,7 @@ ga_pld_fb_psds = {ip : {fb: np.mean(np.asarray(pld_fb_psds[ip][fb]), axis=0) for
 sem_pld_fb_psds = {ip : {fb: np.std(np.asarray(pld_fb_psds[ip][fb]), axis=0)/np.sqrt(N) for fb in pld_fb_psds[ip].keys()} for ip in pld_fb_psds.keys()}
 
 
+
 # Periods for statistical tests
 if norm_period == []:
     stat_periods = iperiods
@@ -80,19 +69,6 @@ else:
 # Info structure
 info = avg_psds['Orgasm'][0].info
 
-
-# Simple spectra plot
-if norm_period == []:
-    fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds[k] for k in iperiods], [sem_pld_avg_psds[k] for k in iperiods], freqs, [], [], [], [], iperiods)
-else:
-    fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds[k] for k in stat_periods], [sem_pld_avg_psds[k] for k in stat_periods], freqs, [], [], [], [], stat_periods)
-[line.set_linewidth(1.5) for line in axs['PLOT'].lines]
-[line.set_linestyle('-') for line in axs['PLOT'].lines]
-axs['PLOT'].legend(stat_periods)
-if norm_period == []:
-    fig.suptitle('Non normalized power spectra')
-else:
-    fig.suptitle('%s normalized power spectra' % norm_period)
 
 
 
@@ -116,4 +92,37 @@ for fb in fbands.keys():
 
 # Post hoc
 ph_combs = list(itertools.combinations(stat_periods,2))
+ph_combs = [(pc[1],pc[0]) for pc in ph_combs]  # Invert order
+ph_combs[-1] = ph_combs[-1][::-1]
+ph_combs[-2] = ph_combs[-2][::-1]
+
+
+# Pooled electrodes
+pld_F_stat['post_hoc'] = {}
+for pc in ph_combs:    
+    lstat = w2o.statistics.pooled_spectra_1_samp_t_test([pld_avg_psds[k] for k in pc])
+    pld_F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])] = lstat
+    if len(lstat['sig_cl']) > 0:
+        fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds[k] for k in pc], [sem_pld_avg_psds[k] for k in pc], freqs, lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], pc)
+        fig.suptitle('Pooled electrodes %s vs %s T-Test' % (pc[0], pc[1]))
+
+# Spatially resolved
+F_stat['post_hoc'] = {}
+for pc in ph_combs:    
+    lstat = w2o.statistics.spatial_spectra_1_samp_t_test([avg_psds[k] for k in pc])
+    F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])] = lstat
+    if len(lstat['sig_cl']) > 0:
+        fig, axs = w2o.viz.plot_power_cluster_summary([ga_avg_psds[k] for k in pc], [sem_pld_avg_psds[k] for k in pc], freqs, lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], info, pc)
+        fig.suptitle('Spatially resolved %s vs %s T-Test' % (pc[0], pc[1]))
+
+
+# Frequency bands spatially resolved
+for fb in fbands.keys():
+    fb_F_stat[fb]['post_hoc'] = {}
+    for pc in ph_combs:
+        lstat = w2o.statistics.fbands_spectra_1_samp_t_test([fb_psds[sp][fb] for sp in pc], info)
+        fb_F_stat[fb]['post_hoc']['%s_%s' % (pc[0], pc[1])] = lstat
+        if len(lstat['sig_cl']) > 0:
+            fig, axs = w2o.viz.plot_fbands_power_cluster_summary([fb_psds[sp][fb] for sp in pc], lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], info, conditions=pc)
+            fig.suptitle('%s (%.0f - %.0f Hz) - %s vs %s T-Test' % (fb, fbands[fb][0], fbands[fb][1], pc[0], pc[1]))
 

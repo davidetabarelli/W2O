@@ -9,6 +9,7 @@ from w2o import filesystem
 from w2o import utils
 from w2o import spectral
 from w2o import statistics
+from w2o import sources
 from w2o import viz
 
 initialize()

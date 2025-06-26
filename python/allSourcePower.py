@@ -5,6 +5,9 @@ import pandas as pd
 import seaborn as sns
 import itertools
 import matplotlib.pyplot as plt
+import fabric
+import paramiko
+import joblib
 
 import mne
 
@@ -21,58 +24,76 @@ norm_period = 'FixRest'
 fbands = w2o.spectral.get_fbands_dict()
 
 # Source reconstruction parameters
-method = 'eLORETA'
+method = 'dSPM'
 snr = 1  # Evoked (average) activity intversion
 lambda2 = 1/snr**2
 
-s = 0
-subject = subjects[s]
-
-craw, events, evt_dict = w2o.preliminary.get_clean_data(subjects[0])
-craw.pick('eeg')
-p_raws = w2o.preliminary.extract_periods(craw, events, evt_dict, 0, iperiods)
-
-p_epochs = {}
-for ip in p_raws.keys():
-    lepochs = mne.make_fixed_length_epochs(p_raws[ip], duration=2, proj=True, reject_by_annotation=True, overlap=0.5)
-    lepochs.drop_bad()
-    p_epochs[ip] = lepochs
+# Atlas
+labels = mne.read_labels_from_annot('fsaverage', parc='aparc_sub')[:448]
 
 
-cov = mne.make_ad_hoc_cov(craw.info)
+# All structures ... TODO DECIDE
+all_p_lb_spds = {ip : [] for ip in iperiods}
+all_avg_p_lb_spds = {ip : [] for ip in iperiods}
+all_freqs = {ip : [] for ip in iperiods}
+for subject in subjects:
+    
+    p_lb_spds, avg_p_lb_spds, freqs, labels = w2o.sources.get_periods_source_psds(subject, iperiods, norm_period=norm_period, method=method, cov_period='FixRest')
+    
+    [all_p_lb_spds[ip].append(p_lb_spds[ip]) for ip in all_p_lb_spds.keys()]
+    [all_avg_p_lb_spds[ip].append(avg_p_lb_spds[ip]) for ip in all_avg_p_lb_spds.keys()]
+    [all_freqs[ip].append(freqs[ip]) for ip in all_freqs.keys()]
 
+freqs = all_freqs[norm_period][0]
+
+
+# Grand averages and SEMs
+ga_avg_lb_psds = {ip : np.mean(np.asarray(all_avg_p_lb_spds[ip]), axis=0) for ip in all_avg_p_lb_spds.keys()}
+sem_avg_lb_psds = {ip : np.std(np.asarray(all_avg_p_lb_spds[ip]), axis=0) / np.sqrt(N) for ip in all_avg_p_lb_spds.keys()}
+
+# Source projections
+stc_ga_avg_lb_psds = {ip : mne.labels_to_stc(labels, ga_avg_lb_psds[ip], tmin=freqs[0], tstep=np.diff(freqs[:2]), subject='fsaverage') for ip in iperiods}
+
+
+# Statistics (ANOVA)
+spectra = [all_avg_p_lb_spds[ip] for ip in iperiods[:-1]]
+alpha = 0.05
+permutations = w2o.statistics.get_permutation_number()
+
+# Prepare stat data
+X = [np.transpose(np.asarray([sp for sp in spectra[i]]), (0,2,1)) for i in range(len(spectra))]
+
+# Get sample size
+N = len(X[0])
+
+# Conditions
+C = len(X)
+
+# Degrees
+#dfn = C - 1
+#dfd = N - C
+
+# Adjacency
 src = mne.read_source_spaces(os.path.join(w2o.filesystem.get_anatomydir(), 'fsaverage', 'bem', 'fsaverage-ico-5-src.fif'))
-bem = mne.read_bem_solution(os.path.join(w2o.filesystem.get_anatomydir(), 'fsaverage', 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif'))
+ladj = w2o.sources.get_labels_adjacency(src, labels, 'aparc_sub')
+adj = mne.stats.combine_adjacency(len(freqs), ladj)
 
-mne.viz.plot_alignment(
-    craw.info,
-    src=src,
-    eeg=["original", "projected"],
-    trans='fsaverage',
-    show_axes=True,
-    mri_fiducials=True,
-    dig="fiducials",
-)
+# One-way repeated-measures ANOVA
+def stat_fun(*args):
+    # get f-values only.
+    return mne.stats.f_mway_rm(np.swapaxes(args, 1, 0), factor_levels=[C], effects='A', return_pvals=False)[0]
 
-fwd = mne.make_forward_solution(craw.info, trans='fsaverage', src=src, bem=bem, eeg=True, mindist=5.0, n_jobs=w2o.utils.get_njobs())
+# Statistical threshold
+thr = mne.stats.f_threshold_mway_rm(N, [C], 'A', alpha)
 
-mfwd = mne.convert_forward_solution(fwd, force_fixed = False, surf_ori = True, use_cps = True, copy = True)
+F, cl, clp, _ = mne.stats.permutation_cluster_test(X, threshold=thr, n_permutations=permutations, tail=1, stat_fun=stat_fun, adjacency=adj, n_jobs=w2o.utils.get_njobs(), seed=19579, out_type='mask', buffer_size=None)
 
-inv = mne.minimum_norm.make_inverse_operator(info = craw.info, forward = mfwd, noise_cov = cov, loose = 'auto', rank='info', fixed = False, use_cps = True)   # Loose orientations for surface, free for volumes
+sig_cl = np.argwhere(clp <= alpha).reshape(-1)
 
-p_stc = {}
-p_stc[ip] = mne.minimum_norm.apply_inverse_epochs(p_epochs[ip], inv, method=method, pick_ori=None, lambda2=lambda2)
+res = {'F': F, 'cl': cl, 'clp': clp, 'sig_cl': sig_cl}
 
-labels = mne.read_labels_from_annot('fsaverage', parc='HCPMMP1')
-labels.pop(0)
-labels.pop(0)
 
-# For each epoche extract time course and compute psd. Accumulate PSD. Do this for each label and for each period. This will be the cortical spectra. Then as usual.
-# Foreach period
-# Foreach epoch
-# Foreach label
-l_tc = p_stc[ip][0].extract_label_time_course(labels, src, mode='mean_flip')
-# Compute epoch PSD
-# Average
-# Eventually normalize on FixRest
-# Put everything in "sources" module
+
+
+
+

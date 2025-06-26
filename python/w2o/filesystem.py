@@ -1,5 +1,5 @@
 import os
-
+import fabric
 
 # Paths
 basedir = os.path.dirname(os.path.dirname(os.getcwd()))
@@ -49,3 +49,21 @@ def get_resultssubjectdir(project, subject):
 
     return resultssubjectdir
 
+def open_remote_connection(irbio_server_num=3):
+    
+    conn = fabric.Connection("davide.tabarelli@irbio-server%d.cimec.unitn.it" % irbio_server_num, connect_kwargs={'password': "Filmoor1995!"})
+    conn.open()
+    
+    return conn
+
+def close_remote_connection(conn):
+    conn.close()
+    
+def get_remote_wd():
+    return "/home/davide.tabarelli/w2o_wd/"
+
+def get_local_wd():
+    return os.path.join(get_datadir(), "w2o_wd/")
+    
+
+    

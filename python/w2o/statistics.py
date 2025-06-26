@@ -90,7 +90,7 @@ def fbands_spectra_1_samp_t_test(spectra, info, alpha=0.05, tail=0, permutations
     return res
 
 # Compare spectra pooled - F-Test
-def pooled_spectra_1w_rm_ANOVA(spectra, alpha=0.05, tail=0, permutations=get_permutation_number()):
+def pooled_spectra_1w_rm_ANOVA(spectra, alpha=0.05, permutations=get_permutation_number()):
     
     # Create stat input
     if type(spectra[0]) == list:
@@ -129,7 +129,7 @@ def pooled_spectra_1w_rm_ANOVA(spectra, alpha=0.05, tail=0, permutations=get_per
 
 
 # Compare spectra spatially - F-Test
-def spatial_spectra_1w_rm_ANOVA(spectra, alpha=0.05, tail=0, permutations=get_permutation_number()):
+def spatial_spectra_1w_rm_ANOVA(spectra, alpha=0.05, permutations=get_permutation_number()):
     
     # Prepare stat data
     X = [np.transpose(np.asarray([sp.get_data() for sp in spectra[i]]), (0,2,1)) for i in range(len(spectra))]
@@ -204,4 +204,9 @@ def fbands_spectra_1w_rm_ANOVA(spectra, info, alpha=0.05, permutations=get_permu
     res = {'F': F, 'cl': cl, 'clp': clp, 'sig_cl': sig_cl}
     
     return res
+
+
+# Compare spectra spatially - F-Test
+#def labels_spectra_1w_rm_ANOVA(spectra, alpha=0.05, permutations=get_permutation_number()):
+# TODO con tutte le altre versioni
     

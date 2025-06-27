@@ -63,14 +63,6 @@ fig.suptitle('Distribuzione lunghezze periodi di interesse. Ogni punto è un sog
 ax.set_xlim((ax.get_xlim()[0] - 10,ax.get_xlim()[1] + 10))
 
 
-
-# Epochs
-n_epochs = {}
-for ip in iperiods:
-    n_epochs[ip] = np.asarray([psds[ip][s].shape[0] for s in range(N)])
-
-
-
 # Load and visualize non normalized spectra
 periods = ['EcRest', 'VibOn', 'VibOff', 'Muscles',  'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']
 nperiods = ['EcRest', 'VibOn', 'VibOff', 'Muscles', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']
@@ -78,16 +70,19 @@ nperiods = ['EcRest', 'VibOn', 'VibOff', 'Muscles', 'Masturbation', 'Pleateau', 
 # Get subjects' spectra
 avg_psds = {ip : [] for ip in periods}
 navg_psds = {ip : [] for ip in nperiods}
+n_epochs = {ip : [] for ip in nperiods}
 for subject in subjects:
     
     lres = w2o.spectral.get_periods_psds(subject, [k for k in w2o.dataset.get_periods_definition().keys()], [])
     nlres = w2o.spectral.get_periods_psds(subject, [k for k in w2o.dataset.get_periods_definition().keys()], 'FixRest')
     
+    [n_epochs[ip].append(lres[0][ip].get_data().shape[0]) for ip in avg_psds.keys()]
     [avg_psds[ip].append(lres[1][ip]) for ip in avg_psds.keys()]
     [navg_psds[ip].append(nlres[1][ip]) for ip in navg_psds.keys()]
     
     # Frequencies (all the same)
     freqs = lres[3][iperiods[0]]
+
 
 
 # Compute electrode pooled (average) data

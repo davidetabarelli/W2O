@@ -85,6 +85,9 @@ def get_vlims_and_transparent_colormap(data, base_colormap='jet'):
     
 def plot_pooled_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, cl, T, legend=[]):
     
+    # Sort for increasing frequency start
+    sig_cl = [sig_cl[j] for j in np.argsort([[i for i in range(len(freqs)) if cl[sc][i]][0] for sc in sig_cl])]
+    
     # Number of conditions
     nC = len(spectra)
     
@@ -145,6 +148,9 @@ def plot_pooled_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, 
     
 # Frequency resolved cluster summary plot for pooled data
 def plot_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, cl, T, info, legend=[]):
+    
+    # Sort for increasing frequency start
+    sig_cl = [sig_cl[j] for j in np.argsort([[i for i in range(len(freqs)) if np.sum(cl[sc], axis=1)[i]][0] for sc in sig_cl])]
     
     # General font size
     mpl.rcParams["font.size"] = 10

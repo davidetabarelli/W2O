@@ -57,7 +57,20 @@ sem_avg_lb_psds = {ip : np.std(np.asarray(all_avg_p_lb_spds[ip]), axis=0) / np.s
 # Source projections
 stc_ga_avg_lb_psds = {ip : mne.labels_to_stc(labels, ga_avg_lb_psds[ip], tmin=freqs[0], tstep=np.diff(freqs[:2]), subject='fsaverage') for ip in iperiods}
 
-# Da qui sistema ....
+
+# Periods for statistical tests
+if norm_period == []:
+    stat_periods = iperiods
+else:
+    stat_periods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
+
+
+# Spatial ANOVA
+F_stat = w2o.statistics.labels_spectra_1w_rm_ANOVA([all_avg_p_lb_spds[ip] for ip in stat_periods], 'aparc_sub')
+
+
+# Frequency bands ANOVA
+# TODO
 
 
 # Post hocs
@@ -66,28 +79,21 @@ ph_combs = [(pc[1],pc[0]) for pc in ph_combs]  # Invert order
 ph_combs[-1] = ph_combs[-1][::-1]
 ph_combs[-2] = ph_combs[-2][::-1]
 
-# Statistics (ANOVA)
-#F_stat = w2o.statistics.labels_spectra_1w_rm_ANOVA([all_avg_p_lb_spds[ip] for ip in stat_periods], 'aparc_sub', 0.01, irbio_num=3)
-F_stat = w2o.statistics.labels_spectra_1w_rm_ANOVA([all_avg_p_lb_spds[ip] for ip in stat_periods], 'aparc_sub', 0.01, irbio_num=3, permutations=w2o.statistics.get_permutation_number(N,1))
+# Spatial
+F_stat['post_hoc'] = {}
+for pc in ph_combs[7:]:    
+    lstat = w2o.statistics.labels_spectra_1_samp_t_test([all_avg_p_lb_spds[ip] for ip in pc], 'aparc_sub', alpha=0.01, tail=0)
+    F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])] = lstat
+    
+
 pc = ph_combs[2]
-T_stat = w2o.statistics.labels_spectra_1_samp_t_test([all_avg_p_lb_spds[ip] for ip in pc], 'aparc_sub', alpha=0.01, tail=0, irbio_num=3, permutations=w2o.statistics.get_permutation_number(N,1))
+mne.labels_to_stc(labels, ((ga_avg_lb_psds[pc[0]]/ga_avg_lb_psds[pc[1]]) * F_stat['cl'][F_stat['sig_cl'][0]]).T, tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='both', colormap='jet', surface='inflated')
+mne.labels_to_stc(labels, ((ga_avg_lb_psds[pc[0]]/ga_avg_lb_psds[pc[1]]) * F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['cl'][F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['sig_cl'][0]].T), tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='both', colormap='jet', surface='inflated')
 
-
-# for sc in F_stat['sig_cl']: 
-#     mne.labels_to_stc(labels, ((ga_avg_lb_psds['Orgasm']/ga_avg_lb_psds['EcRest']) * F_stat['cl'][sc].T), tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='both', colormap='jet', surface='inflated')
+mne.labels_to_stc(labels, (F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['T'] * F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['cl'][F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['sig_cl'][0]].T), tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='both', colormap='jet', surface='inflated')
 
 # mne.labels_to_stc(labels, ((ga_avg_lb_psds['Orgasm']/ga_avg_lb_psds['EcRest']) * F_stat['cl'][F_stat['sig_cl'][0]]).T, tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='lh', colormap='jet', surface='inflated')
 # mne.labels_to_stc(labels, ((ga_avg_lb_psds['Orgasm']/ga_avg_lb_psds['EcRest']) * F_stat['cl'][F_stat['sig_cl'][1]]).T, tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='lh', colormap='jet', surface='inflated')
-
-
-# Post hocs
-ph_combs = list(itertools.combinations(stat_periods,2))
-ph_combs = [(pc[1],pc[0]) for pc in ph_combs]  # Invert order
-ph_combs[-1] = ph_combs[-1][::-1]
-ph_combs[-2] = ph_combs[-2][::-1]
-
-# Prova
-
 
 
 

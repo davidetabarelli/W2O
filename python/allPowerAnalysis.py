@@ -101,7 +101,7 @@ ph_combs[-2] = ph_combs[-2][::-1]
 pld_F_stat['post_hoc'] = {}
 pld_ph_figs = []
 for pc in ph_combs:    
-    lstat = w2o.statistics.pooled_spectra_1_samp_t_test([pld_avg_psds[k] for k in pc], irbio_num=1)
+    lstat = w2o.statistics.pooled_spectra_1_samp_t_test([pld_avg_psds[k] for k in pc])
     pld_F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])] = lstat
     if len(lstat['sig_cl']) > 0:
         fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds[k] for k in pc], [sem_pld_avg_psds[k] for k in pc], freqs, lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], pc)

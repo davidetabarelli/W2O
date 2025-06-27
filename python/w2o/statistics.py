@@ -213,7 +213,7 @@ def spatial_spectra_1_samp_t_test(spectra, alpha=0.05, tail=0, permutations=get_
     return res
 
 # Compare spectra bands - T-Test
-def fbands_spectra_1_samp_t_test(spectra, info, alpha=0.05, tail=0, permutations=get_permutation_number(), iribio_num=3):
+def fbands_spectra_1_samp_t_test(spectra, info, alpha=0.05, tail=0, permutations=get_permutation_number(), irbio_num=3):
     
     # Get sample size
     N = len(spectra[0])

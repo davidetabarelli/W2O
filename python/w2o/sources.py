@@ -25,28 +25,6 @@ from w2o import spectral
 # Prepare remote script based on inputs
 def prepare_remote_psd_script(unique_str, method, lambda2, fmin, fmax, n_jobs=140):    
     
-    # sc_str =  ""
-    # sc_str += "\n"
-    # sc_str += "import numpy as np\n"
-    # sc_str += "import mne\n"
-    # sc_str += "import joblib\n"
-    # sc_str += "\n"
-    # sc_str += "data_in = joblib.load('w2o_remote_tmp_data_in_%s.joblib')\n" % unique_str
-    # sc_str += "\n"
-    # sc_str += "p_lb_spds = {}\n"
-    # sc_str += "freqs = {}\n"
-    # sc_str += "for ip in data_in['p_epochs'].keys():\n"
-    # sc_str += "\tp_lb_spds[ip] = []\n"    
-    # sc_str += "\tlstc = mne.minimum_norm.compute_source_psd_epochs(data_in['p_epochs'][ip], inverse_operator=data_in['inv'], method=\"%s\", lambda2=%f, fmin=%f, fmax=%f, bandwidth=2.0, adaptive=False, low_bias=False, pick_ori=None, pca=False, use_cps=True, n_jobs=%d)\n" % (method, lambda2, fmin, fmax, n_jobs)
-    # sc_str += "\tfreqs[ip] = lstc[0].times\n"
-    # #sc_str += "\tp_lb_psds[ip].append(np.asarray([mne.extract_label_time_course(ls, data_in['labels'], data_in['src'], mode='mean_flip') for ls in lstc]))\n"    
-    # sc_str += "\tp_lb_spds[ip] = np.asarray([mne.extract_label_time_course(ls, data_in['labels'], data_in['src'], mode='mean') for ls in lstc])\n"    
-    # sc_str += "\n"
-    # sc_str += "data_out = {'p_lb_spds': p_lb_spds, 'freqs': freqs}\n"
-    # sc_str += "joblib.dump(data_out, './w2o_remote_tmp_data_out_%s.joblib', compress=3)\n" % unique_str
-    # sc_str += "\n"
-    # sc_str += "quit()\n"
-    
     sc_str =  ""
     sc_str += "\n"
     sc_str += "import numpy as np\n"
@@ -170,68 +148,88 @@ def get_periods_source_psds(subject, periods=[], norm_period=[], method='eLORETA
     # Frequency bands
     f_bands = spectral.get_fbands_dict()
     
-    # Check if all periods on selected options are already computed
-    # TODO: spare time
-    
-    
-    # Get craw
-    craw, events, evt_dict = preliminary.get_clean_data(subject, True)
-    
-    # Pick EEG channels
-    craw.pick('eeg')
-    
-    # Get periods
-    p_raws = preliminary.extract_periods(craw, events, evt_dict, 0, iperiods)
-
-    # Create epochs
-    p_epochs = {}
-    for ip in p_raws.keys():
-        
-        if ip == 'Muscles':
-            
-            lepochs = preliminary.extract_muscles_epochs(p_raws[ip], events, evt_dict, 2.0, 0.5)
-                    
-        elif np.isin(ip, ['VibTest', 'Vib1', 'Vib2']):
-            
-            lepochs = preliminary.extract_vib_epochs(p_raws[ip], events, evt_dict)
-            
-        else:
-            lepochs = mne.make_fixed_length_epochs(p_raws[ip], duration=2, proj=True, reject_by_annotation=True, overlap=0.5)
-            lepochs.drop_bad()
-        
-        p_epochs[ip] = lepochs
-    
-    
-    # Join Vibs periods adding a new one
-    if np.all(np.isin(['VibTest', 'Vib1', 'Vib2'], iperiods)):
-        p_epochs['VibOn'] = mne.concatenate_epochs([p_epochs[ip]['VibOn'] for ip in ['VibTest', 'Vib1', 'Vib2'] if p_epochs[ip] != None])
-        p_epochs['VibOff'] = mne.concatenate_epochs([p_epochs[ip]['VibOff'] for ip in ['VibTest', 'Vib1', 'Vib2'] if p_epochs[ip] != None])
-    
-        # Prune old Vib epochs
-        [p_epochs.pop(vp) for vp in ['VibTest', 'Vib1', 'Vib2']]
-    
-    # Prepare inversion kernel
-    if cov_period == None:        
-        cov = mne.make_ad_hoc_cov(craw.info)
-    else:
-        # Compute covariance on epochs (all or FixRest?) and keep only diagonal elements. See: https://neuroimage.usc.edu/brainstorm/Tutorials/NoiseCovariance#Variations_on_how_to_estimate_sample_noise_covariance
-        cov = mne.compute_covariance(p_epochs[cov_period])
-        cov.as_diag()
-    
-    src = mne.read_source_spaces(os.path.join(filesystem.get_anatomydir(), 'fsaverage', 'bem', 'fsaverage-ico-5-src.fif'))
-    bem = mne.read_bem_solution(os.path.join(filesystem.get_anatomydir(), 'fsaverage', 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif'))
-    fwd = mne.make_forward_solution(craw.info, trans='fsaverage', src=src, bem=bem, eeg=True, mindist=5.0, n_jobs=utils.get_njobs()) 
-    mfwd = mne.convert_forward_solution(fwd, force_fixed = False, surf_ori = True, use_cps = True, copy = True)
-    inv = mne.minimum_norm.make_inverse_operator(info = craw.info, forward = mfwd, noise_cov = cov, loose = 1, rank='info', fixed = False, use_cps = True)   # Loose orientations for surface, free for volumes
+    # Labels
     labels = mne.read_labels_from_annot('fsaverage', parc='aparc_sub')[:448]
     
-    # Cycle trough periods and remote-compute raw psds on labels
-    p_lb_spds = {ip: None for ip in iperiods}
-    freqs = {ip: None for ip in iperiods}
-    for ip in iperiods:
-        lb_psd, lfreqs = compute_period_source_psd(subject, ip, p_epochs[ip], inv, src, labels, fmin=spectral.get_spectral_limits()[0], fmax=spectral.get_spectral_limits()[1], method=method, irbio_num=irbio_num, n_jobs=140, cov_period=cov_period)
-        p_lb_spds[ip] = lb_psd
-        freqs[ip] = lfreqs
+    # Check if all periods on selected options are already computed
+    fperiods = iperiods.copy()
+    if np.any([ip[:3] == 'Vib' for ip in fperiods]):        
+        fperiods = [ip for ip in fperiods if ip[:3] != 'Vib']
+        fperiods.append('VibOn')
+        fperiods.append('VibOff')
+    
+    if np.all([os.path.exists(os.path.join(filesystem.get_resultssubjectdir('spectral', subject), "source_spectra_%s_%s_%s_%.1f_to_%.1f_%s_%s.joblib" % ('aparc_sub' if len(labels) == 448 else 'HCPMMP', subject, ip, spectral.get_spectral_limits()[0], spectral.get_spectral_limits()[1], method, 'cov_%s' % cov_period if cov_period != None else ''))) for ip in fperiods]):
+        
+        p_lb_spds = {ip: None for ip in fperiods}
+        freqs = {ip: None for ip in fperiods}
+        for ip in fperiods:
+            lb_psd, lfreqs = compute_period_source_psd(subject, ip, None, None, None, labels, fmin=spectral.get_spectral_limits()[0], fmax=spectral.get_spectral_limits()[1], method=method, irbio_num=irbio_num, n_jobs=140, cov_period=cov_period)
+            p_lb_spds[ip] = lb_psd
+            freqs[ip] = lfreqs
+    else:
+    
+        # Get craw
+        craw, events, evt_dict = preliminary.get_clean_data(subject, True)
+        
+        # Pick EEG channels
+        craw.pick('eeg')
+        
+        # Get periods
+        p_raws = preliminary.extract_periods(craw, events, evt_dict, 0, iperiods)
+    
+        # Create epochs
+        p_epochs = {}
+        for ip in p_raws.keys():
+            
+            if ip == 'Muscles':
+                
+                lepochs = preliminary.extract_muscles_epochs(p_raws[ip], events, evt_dict, 2.0, 0.5)
+                        
+            elif np.isin(ip, ['VibTest', 'Vib1', 'Vib2']):
+                
+                lepochs = preliminary.extract_vib_epochs(p_raws[ip], events, evt_dict)
+                
+            else:
+                lepochs = mne.make_fixed_length_epochs(p_raws[ip], duration=2, proj=True, reject_by_annotation=True, overlap=0.5)
+                lepochs.drop_bad()
+            
+            p_epochs[ip] = lepochs
+        
+        
+        # Join Vibs periods adding a new one
+        if np.all(np.isin(['VibTest', 'Vib1', 'Vib2'], iperiods)):
+            p_epochs['VibOn'] = mne.concatenate_epochs([p_epochs[ip]['VibOn'] for ip in ['VibTest', 'Vib1', 'Vib2'] if p_epochs[ip] != None])
+            p_epochs['VibOff'] = mne.concatenate_epochs([p_epochs[ip]['VibOff'] for ip in ['VibTest', 'Vib1', 'Vib2'] if p_epochs[ip] != None])
+        
+            # Prune old Vib epochs
+            [p_epochs.pop(vp) for vp in ['VibTest', 'Vib1', 'Vib2']]
+            
+            # Correct iperiods
+            iperiods = [ip for ip in iperiods if ip[:3] != 'Vib']
+            iperiods.append('VibOn')
+            iperiods.append('VibOff')
+        
+        # Prepare inversion kernel
+        if cov_period == None:        
+            cov = mne.make_ad_hoc_cov(craw.info)
+        else:
+            # Compute covariance on epochs (all or FixRest?) and keep only diagonal elements. See: https://neuroimage.usc.edu/brainstorm/Tutorials/NoiseCovariance#Variations_on_how_to_estimate_sample_noise_covariance
+            cov = mne.compute_covariance(p_epochs[cov_period])
+            cov.as_diag()
+        
+        src = mne.read_source_spaces(os.path.join(filesystem.get_anatomydir(), 'fsaverage', 'bem', 'fsaverage-ico-5-src.fif'))
+        bem = mne.read_bem_solution(os.path.join(filesystem.get_anatomydir(), 'fsaverage', 'bem', 'fsaverage-5120-5120-5120-bem-sol.fif'))
+        fwd = mne.make_forward_solution(craw.info, trans='fsaverage', src=src, bem=bem, eeg=True, mindist=5.0, n_jobs=utils.get_njobs()) 
+        mfwd = mne.convert_forward_solution(fwd, force_fixed = False, surf_ori = True, use_cps = True, copy = True)
+        inv = mne.minimum_norm.make_inverse_operator(info = craw.info, forward = mfwd, noise_cov = cov, loose = 1, rank='info', fixed = False, use_cps = True)   # Loose orientations for surface, free for volumes    
+        
+        # Cycle trough periods and remote-compute raw psds on labels
+        p_lb_spds = {ip: None for ip in iperiods}
+        freqs = {ip: None for ip in iperiods}
+        for ip in iperiods:
+            lb_psd, lfreqs = compute_period_source_psd(subject, ip, p_epochs[ip], inv, src, labels, fmin=spectral.get_spectral_limits()[0], fmax=spectral.get_spectral_limits()[1], method=method, irbio_num=irbio_num, n_jobs=140, cov_period=cov_period)
+            p_lb_spds[ip] = lb_psd
+            freqs[ip] = lfreqs
     
     
     # If selected normalize PSD on selected normalization period 
@@ -245,11 +243,24 @@ def get_periods_source_psds(subject, periods=[], norm_period=[], method='eLORETA
     # Average
     avg_p_lb_spds = {ip : np.mean(p_lb_spds[ip], axis=0) for ip in p_lb_spds.keys()}
     
-    # TODO: frequency bands ..
+    # Create fbands. Created from averaged (and eventually normalized) spectra
+    fb_p_lb_psds = {}
+    for ip in p_lb_spds.keys():
+        fb_p_lb_psds[ip] = {fb: None for fb in f_bands.keys()}
+        for fb in f_bands.keys():
+            
+            fmin = f_bands[fb][0]
+            fmax = f_bands[fb][1]
+            
+            f_idx = np.argwhere((freqs[ip] >= fmin) & (freqs[ip] <= fmax)).reshape(-1)
+            
+            fb_p_lb_psds[ip][fb] = np.mean(avg_p_lb_spds[ip][:, f_idx], axis=1)
+        
     
-    return p_lb_spds, avg_p_lb_spds, freqs, labels
     
-    # If labels is a full atlas set the name for disk load (faster)
+    return p_lb_spds, avg_p_lb_spds, fb_p_lb_psds, freqs, labels
+    
+# If labels is a full atlas set the name for disk load (faster)
 def get_labels_adjacency(src, labels, atlas=None):
     
     computeAdj = True

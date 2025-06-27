@@ -17,7 +17,8 @@ import w2o
 subjects, N = w2o.dataset.get_subjects()
 
 
-iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']
+#iperiods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution', 'FixRest']
+iperiods = ['Muscles', 'VibTest', 'Vib1', 'Vib2', 'FixRest']
 norm_period = 'FixRest'
 
 # Frequency bands

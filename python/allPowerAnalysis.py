@@ -71,7 +71,7 @@ info = avg_psds['Orgasm'][0].info
 
 
 # Pooled electrodes ANOVA
-pld_F_stat = w2o.statistics.pooled_spectra_1w_rm_ANOVA([pld_avg_psds[k] for k in stat_periods], irbio_num=1)
+pld_F_stat = w2o.statistics.pooled_spectra_1w_rm_ANOVA([pld_avg_psds[k] for k in stat_periods])
 pld_fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds[k] for k in stat_periods], [sem_pld_avg_psds[k] for k in stat_periods], freqs, pld_F_stat['sig_cl'], pld_F_stat['clp'], pld_F_stat['cl'], pld_F_stat['F'], stat_periods)
 
 # Spatially resolved ANOVA
@@ -101,7 +101,7 @@ ph_combs[-2] = ph_combs[-2][::-1]
 pld_F_stat['post_hoc'] = {}
 pld_ph_figs = []
 for pc in ph_combs:    
-    lstat = w2o.statistics.pooled_spectra_1_samp_t_test([pld_avg_psds[k] for k in pc])
+    lstat = w2o.statistics.pooled_spectra_1_samp_t_test([pld_avg_psds[k] for k in pc], irbio_num=1)
     pld_F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])] = lstat
     if len(lstat['sig_cl']) > 0:
         fig, axs = w2o.viz.plot_pooled_power_cluster_summary([ga_pld_avg_psds[k] for k in pc], [sem_pld_avg_psds[k] for k in pc], freqs, lstat['sig_cl'], lstat['clp'], lstat['cl'], lstat['T'], pc)

@@ -3,6 +3,7 @@
 import numpy as np
 import mne
 import os
+import time
 import matplotlib.pyplot as plt
 
 from w2o import filesystem
@@ -63,9 +64,20 @@ def get_transparent_cmap(alpha_mode='center', basemap='jet', vlims=None):
     return mpl.colors.ListedColormap(cmap)
         
 
-def get_vlims_and_transparent_colormap(data, base_colormap='jet'):
+def get_vlims_and_transparent_colormap(data, base_colormap='jet', real=False):
     
     vlims = get_vlims(data, True)
+    
+    if real:
+        if (np.prod(np.sign(vlims)) == -1):
+            cmap = get_transparent_cmap('real', base_colormap, vlims) 
+        else:   
+            if np.sum(np.sign(vlims)) <= 0:
+                cmap = get_transparent_cmap('top', base_colormap)
+            else:
+                cmap = get_transparent_cmap('bottom', base_colormap)
+        
+        return vlims, cmap
     
     if np.prod(np.sign(vlims)) == -1:
         if np.abs(np.sort(vlims)[0]/np.sort(vlims)[1]) <= 0.2:
@@ -146,7 +158,6 @@ def plot_pooled_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, 
     return fig, axs
     
     
-# Frequency resolved cluster summary plot for pooled data
 def plot_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, cl, T, info, legend=[]):
     
     # Sort for increasing frequency start
@@ -261,7 +272,7 @@ def plot_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, cl, T, 
                 lf_idx = f_idx[(fN*j):(fN*(j+1))]                
                 lTs.append(np.mean(T[lf_idx,:], axis=0))
                 
-            vlims, cmap = get_vlims_and_transparent_colormap(np.asarray(lTs), 'jet')
+            vlims, cmap = get_vlims_and_transparent_colormap(np.asarray(lTs), 'jet', False)
             
             for j in range(n_cols):
                 
@@ -296,6 +307,237 @@ def plot_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, cl, T, 
     
     return fig, axs
 
+
+def plot_labels_power_cluster_summary(spectra, sem_spectra, freqs, sig_cl, clp, cl, T, labels, legend=[]):
+    
+    plt.ion()
+    
+    # Sort for increasing frequency start
+    sig_cl = [sig_cl[j] for j in np.argsort([[i for i in range(len(freqs)) if np.sum(cl[sc], axis=1)[i]][0] for sc in sig_cl])]
+    
+    # General font size
+    mpl.rcParams["font.size"] = 10
+    
+    # Number of conditions
+    nC = len(spectra)
+    
+    # Splot labels on hemisphere
+    lh_lidx = np.argwhere([labels[i].hemi == 'lh' for i in range(len(labels))]).reshape(-1)
+    rh_lidx = np.argwhere([labels[i].hemi == 'rh' for i in range(len(labels))]).reshape(-1)
+    
+    # Get clusters hemispheres. Always disjointed (no interhemispheric connectivity)
+    if len(sig_cl) != 0:
+        hemis = []
+        for sc in sig_cl:
+            assert len(np.unique([labels[l].hemi for l in np.argwhere(np.sum(cl[sc], axis=0) != 0).reshape(-1)])) == 1
+            hemis.append(np.unique([labels[l].hemi for l in np.argwhere(np.sum(cl[sc], axis=0) != 0).reshape(-1)])[0])
+    
+    # Get fsaverage brain dimensions
+    src = mne.read_source_spaces(os.path.join(filesystem.get_anatomydir(), 'fsaverage', 'bem', 'fsaverage-ico-5-src.fif'))
+    n_verts = {'lh': src[0]['nn'].shape[0], 'rh': src[1]['nn'].shape[0]}
+    del src
+    
+    # Colors
+    clrs = get_color_cycle()[0:nC]
+    
+    # Mosaic size. Depends on n sig clusters
+    m_size = [13, len(sig_cl)+2]
+    
+    # Define mosaic    
+    mosaic = [['.' for j in range(m_size[0])] for i in range(m_size[1])]
+    
+    mosaic[m_size[1]-2][0:m_size[0]] = ['PLOT_L' for s in range(m_size[0])]
+    mosaic[m_size[1]-1][0:m_size[0]] = ['PLOT_R' for s in range(m_size[0])]
+    
+    for i in range(m_size[1]-2):
+        for j in range(int(m_size[0]/3)):
+            #print('(%d,%d) -> SRC_%d_%d' % (i,3*j+1,m_size[1]-2-i,j+1))
+            mosaic[i][3*j+1] = 'SRC_%d_%d' % (m_size[1]-2-i,j+1)
+            mosaic[i][3*j+2] = 'SRC_CB_%d_%d' % (m_size[1]-2-i,j+1)
+    
+    # Aspect ratio of mosaic    
+    w_ratios = [1,4,1,1,4,1,1,4,1,1,4,1,1]
+    h_ratios = [1 for i in range(m_size[1])]
+    h_ratios[-2] = 1.5
+    h_ratios[-1] = 1.5
+    
+    fig_size_inches = [12,6 + m_size[1]]
+    
+    # Create mosaic
+    fig = plt.figure(constrained_layout=False, figsize=fig_size_inches)    
+    axs = fig.subplot_mosaic(mosaic, height_ratios=h_ratios, width_ratios=w_ratios, gridspec_kw={'wspace':0.1, 'hspace':0.2}) 
+    
+    # Refine axes lines appearance
+    [axs['SRC_%d_%d' % (i,j)].set_xticks([]) for i in range(1,m_size[1]-1) for j in range(1,5)]
+    [axs['SRC_%d_%d' % (i,j)].set_yticks([]) for i in range(1,m_size[1]-1) for j in range(1,5)]
+    [axs['SRC_%d_%d' % (i,j)].spines[['right', 'top', 'left', 'bottom']].set_visible(False) for i in range(1,m_size[1]-1) for j in range(1,5)]
+        
+    [axs['SRC_CB_%d_%d' % (i,j)].set_xticks([]) for i in range(1,m_size[1]-1) for j in range(1,5)]
+    [axs['SRC_CB_%d_%d' % (i,j)].set_yticks([]) for i in range(1,m_size[1]-1) for j in range(1,5)]
+    [axs['SRC_CB_%d_%d' % (i,j)].spines[['right', 'top', 'left', 'bottom']].set_visible(False) for i in range(1,m_size[1]-1) for j in range(1,5)]
+        
+    axs['PLOT_L'].spines[['right', 'top']].set_visible(False)
+    axs['PLOT_L'].set_xlabel('')
+    axs['PLOT_L'].set_ylabel('Source power (Left)')
+    
+    axs['PLOT_R'].spines[['right', 'top']].set_visible(False)
+    axs['PLOT_R'].set_xlabel('Frequency [Hz]')
+    axs['PLOT_R'].set_ylabel('Source power (Right)')
+    
+    # Overall spectra with SEM
+    for c in range(nC):
+        axs['PLOT_L'].semilogy(freqs, np.mean(spectra[c][lh_lidx,:], axis=0), '%s--' % clrs[c], linewidth=0.5)    
+        axs['PLOT_R'].semilogy(freqs, np.mean(spectra[c][rh_lidx,:], axis=0), '%s--' % clrs[c], linewidth=0.5)    
+    
+    axs['PLOT_R'].legend(legend, ncol=2)
+
+    if len(sem_spectra) != 0:
+        for c in range(nC):
+            axs['PLOT_L'].fill_between(freqs, np.mean(spectra[c][lh_lidx,:], axis=0) - np.mean(sem_spectra[c][lh_lidx,:], axis=0), np.mean(spectra[c][lh_lidx,:], axis=0) + np.mean(sem_spectra[c][lh_lidx,:], axis=0), alpha=0.1, color=clrs[c])
+            axs['PLOT_R'].fill_between(freqs, np.mean(spectra[c][rh_lidx,:], axis=0) - np.mean(sem_spectra[c][rh_lidx,:], axis=0), np.mean(spectra[c][rh_lidx,:], axis=0) + np.mean(sem_spectra[c][rh_lidx,:], axis=0), alpha=0.1, color=clrs[c])
+    
+    
+    # Clusters info in main plot
+    if len(sig_cl) != 0:
+        
+        i = 1        
+        for sc in sig_cl:
+            
+            l_idx = np.argwhere(np.sum(cl[sc], axis=0) != 0).reshape(-1)
+            f_idx = np.argwhere(np.sum(cl[sc], axis=1) != 0).reshape(-1)
+            
+            for c in range(nC):
+                if hemis[i-1] == 'lh':
+                    axs['PLOT_L'].semilogy(freqs[f_idx], np.mean(spectra[c][l_idx,:][:,f_idx], axis=0), clrs[c], linewidth=2)
+                if hemis[i-1] == 'rh':
+                    axs['PLOT_R'].semilogy(freqs[f_idx], np.mean(spectra[c][l_idx,:][:,f_idx], axis=0), clrs[c], linewidth=2)
+            
+            i = i + 1
+        
+        i = 1
+        l_ymin, l_ymax = axs['PLOT_L'].get_ylim()
+        r_ymin, r_ymax = axs['PLOT_R'].get_ylim()
+        for sc in sig_cl:
+            
+            if hemis[i-1] == 'lh':
+                f_idx = np.argwhere(np.sum(cl[sc], axis=1) != 0).reshape(-1)
+                axs['PLOT_L'].fill_betweenx((l_ymin,l_ymax), freqs[f_idx[0]], freqs[f_idx[-1]], color="gray", alpha=0.05)
+                axs['PLOT_L'].text(np.mean(freqs[f_idx]), l_ymax, "%d" % i, fontsize=10, ha='center', va='bottom')
+                axs['PLOT_L'].text(np.mean(freqs[f_idx]), l_ymax, "%d" % i, fontsize=10, ha='center', va='bottom')
+                axs['PLOT_L'].text(np.mean(freqs[f_idx]), l_ymin, "p = %.2g" % clp[sc], fontsize=10, ha='center', va='bottom')
+            
+            if hemis[i-1] == 'rh':
+                f_idx = np.argwhere(np.sum(cl[sc], axis=1) != 0).reshape(-1)
+                axs['PLOT_R'].fill_betweenx((r_ymin,r_ymax), freqs[f_idx[0]], freqs[f_idx[-1]], color="gray", alpha=0.05)
+                axs['PLOT_R'].text(np.mean(freqs[f_idx]), r_ymax, "%d" % i, fontsize=10, ha='center', va='bottom')
+                axs['PLOT_R'].text(np.mean(freqs[f_idx]), r_ymax, "%d" % i, fontsize=10, ha='center', va='bottom')
+                axs['PLOT_R'].text(np.mean(freqs[f_idx]), r_ymin, "p = %.2g" % clp[sc], fontsize=10, ha='center', va='bottom')
+            
+            i = i + 1
+    
+    # Clusters brain flat maps
+    if len(sig_cl) != 0:
+        
+        i = 1        
+        for sc in sig_cl:
+            
+            f_idx = np.argwhere(np.sum(cl[sc], axis=1) != 0).reshape(-1)
+            
+            if len(f_idx) <= 4:
+                n_cols = len(f_idx)                
+                fN = 1
+            else:
+                fN = int(np.ceil(len(f_idx) / 4))
+                n_cols = int(len(f_idx)/fN)
+                n_cols = int(np.ceil(len(f_idx)/fN))
+            
+            lTs = []
+            lTranges = []
+            for j in range(n_cols):
+            
+                lf_idx = f_idx[(fN*j):(fN*(j+1))]    
+                ll_idx = np.argwhere(np.sum(cl[sc][lf_idx,:], axis=0)).reshape(-1)
+                lTs.append(np.mean(T[lf_idx,:], axis=0))
+                lTranges.append([np.min(np.mean(T[lf_idx,:][:,ll_idx], axis=0)), np.max(np.mean(T[lf_idx,:][:,ll_idx], axis=0))])
+                
+            vlims, cmap = get_vlims_and_transparent_colormap(np.asarray(lTranges), 'jet', True)
+            
+            for j in range(n_cols):
+                
+                lf_idx = f_idx[(fN*j):(fN*(j+1))]                
+                ll_idx = np.argwhere(np.sum(cl[sc][lf_idx,:], axis=0)).reshape(-1)
+                                
+                if nC <= 2:
+                    axs['SRC_%d_%d' % (i,j+1)].set_title('# %d - T-Value (%.1f Hz)' % (i, np.mean(freqs[lf_idx])), fontsize=8, pad=0)
+                else:
+                    axs['SRC_%d_%d' % (i,j+1)].set_title('# %d - F-Value (%.1f Hz)' % (i, np.mean(freqs[lf_idx])), fontsize=8, pad=0)
+                                
+                
+                brain = mne.viz.Brain('fsaverage', hemi=hemis[i-1], surf='flat', size=200, background='white')            
+                bdata = np.zeros(n_verts[hemis[i-1]])
+                for ll in ll_idx:
+                    bdata[labels[ll].vertices] = lTs[j][ll]
+                brain.add_data(bdata, fmin=vlims[0], fmax=vlims[1], colormap=cmap, colorbar=False)
+                screenshot = brain.screenshot()
+                screenshot = screenshot[(screenshot != 255).any(-1).any(1)][:,(screenshot != 255).any(-1).any(0)]
+                time.sleep(0.01)
+                axs['SRC_%d_%d' % (i,j+1)].imshow(screenshot)    
+                time.sleep(0.01)
+                brain.close()
+                
+                if j == n_cols - 1:
+                    mne.viz.plot_brain_colorbar(axs['SRC_CB_%d_%d' % (i,4)], {'kind' : 'value', 'lims' : [vlims[0], np.mean(vlims), vlims[1]]}, colormap=cmap, transparent=True, orientation='vertical', label=None, bgcolor='w')
+            
+            i = i +1
+   
+    # Onclick callback
+    def onclick(event):
+        
+        axlabel = event.inaxes.get_label()
+        i = int(axlabel[4:5])        
+        
+        sc = sig_cl[i-1]
+        
+        f_idx = np.argwhere(np.sum(cl[sc], axis=1) != 0).reshape(-1)
+        
+        if len(f_idx) <= 4:
+            n_cols = len(f_idx)                
+            fN = 1
+        else:
+            fN = int(np.ceil(len(f_idx) / 4))
+            n_cols = int(len(f_idx)/fN)
+            n_cols = int(np.ceil(len(f_idx)/fN))
+        
+        lTs = []
+        lTranges = []
+        for j in range(n_cols):
+        
+            lf_idx = f_idx[(fN*j):(fN*(j+1))]    
+            ll_idx = np.argwhere(np.sum(cl[sc][lf_idx,:], axis=0)).reshape(-1)
+            lTs.append(np.mean(T[lf_idx,:], axis=0))
+            lTranges.append([np.min(np.mean(T[lf_idx,:][:,ll_idx], axis=0)), np.max(np.mean(T[lf_idx,:][:,ll_idx], axis=0))])
+            
+        vlims, cmap = get_vlims_and_transparent_colormap(np.asarray(lTranges), 'jet', True)
+        
+        j = int(axlabel[6:7]) - 1
+        
+        lf_idx = f_idx[(fN*j):(fN*(j+1))]                
+        ll_idx = np.argwhere(np.sum(cl[sc][lf_idx,:], axis=0)).reshape(-1)
+        
+        if nC <= 2:
+            btitle = '# %d - T-Value (%.1f Hz)' % (i, np.mean(freqs[lf_idx]))
+        else:
+            btitle = '# %d - F-Value (%.1f Hz)' % (i, np.mean(freqs[lf_idx]))
+        
+        brain = mne.viz.Brain('fsaverage', hemi=hemis[i-1], surf='inflated', size=600, background='white', title=btitle)
+        bdata = np.zeros(n_verts[hemis[i-1]])
+        for ll in ll_idx:
+            bdata[labels[ll].vertices] = lTs[j][ll]
+        brain.add_data(bdata, fmin=vlims[0], fmax=vlims[1], colormap=cmap, colorbar=True)
+        
+    
+    fig.canvas.mpl_connect('button_press_event', onclick)
+    
 
 def plot_fbands_power_cluster_summary(fb_spectra, sig_cl, clp, cl, T, info, conditions=[]):
     
@@ -386,7 +628,7 @@ def plot_fbands_power_cluster_summary(fb_spectra, sig_cl, clp, cl, T, info, cond
     
     # Clusters
     i = 1
-    vlims, cmap = get_vlims_and_transparent_colormap(np.asarray(T), 'jet')
+    vlims, cmap = get_vlims_and_transparent_colormap(np.asarray(T), 'jet', False)
     for sc in sig_cl:
         
         c_idx = np.argwhere(cl[sc] != 0).reshape(-1)

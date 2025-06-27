@@ -1,13 +1,4 @@
 import numpy as np
-import scipy as sp
-import os
-import pandas as pd
-import seaborn as sns
-import itertools
-import matplotlib.pyplot as plt
-import fabric
-import paramiko
-import joblib
 import itertools
 
 import mne
@@ -64,9 +55,13 @@ if norm_period == []:
 else:
     stat_periods = ['EcRest', 'Masturbation', 'Pleateau', 'Orgasm', 'Resolution']
 
+import joblib
+F_stat = joblib.load('F_stat.joblib')
 
 # Spatial ANOVA
 F_stat = w2o.statistics.labels_spectra_1w_rm_ANOVA([all_avg_p_lb_spds[ip] for ip in stat_periods], 'aparc_sub')
+w2o.viz.plot_labels_power_cluster_summary([ga_avg_lb_psds[sp] for sp in stat_periods], [sem_avg_lb_psds[sp] for sp in stat_periods], freqs, F_stat['sig_cl'], F_stat['clp'], F_stat['cl'], F_stat['F'], labels, stat_periods)
+  
 
 
 # Frequency bands ANOVA
@@ -84,16 +79,7 @@ F_stat['post_hoc'] = {}
 for pc in ph_combs[7:]:    
     lstat = w2o.statistics.labels_spectra_1_samp_t_test([all_avg_p_lb_spds[ip] for ip in pc], 'aparc_sub', alpha=0.01, tail=0)
     F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])] = lstat
-    
-
-pc = ph_combs[2]
-mne.labels_to_stc(labels, ((ga_avg_lb_psds[pc[0]]/ga_avg_lb_psds[pc[1]]) * F_stat['cl'][F_stat['sig_cl'][0]]).T, tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='both', colormap='jet', surface='inflated')
-mne.labels_to_stc(labels, ((ga_avg_lb_psds[pc[0]]/ga_avg_lb_psds[pc[1]]) * F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['cl'][F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['sig_cl'][0]].T), tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='both', colormap='jet', surface='inflated')
-
-mne.labels_to_stc(labels, (F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['T'] * F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['cl'][F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['sig_cl'][0]].T), tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='both', colormap='jet', surface='inflated')
-
-# mne.labels_to_stc(labels, ((ga_avg_lb_psds['Orgasm']/ga_avg_lb_psds['EcRest']) * F_stat['cl'][F_stat['sig_cl'][0]]).T, tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='lh', colormap='jet', surface='inflated')
-# mne.labels_to_stc(labels, ((ga_avg_lb_psds['Orgasm']/ga_avg_lb_psds['EcRest']) * F_stat['cl'][F_stat['sig_cl'][1]]).T, tmin=1, tstep=0.5, subject='fsaverage').plot(hemi='lh', colormap='jet', surface='inflated')
 
 
+w2o.viz.plot_labels_power_cluster_summary([ga_avg_lb_psds[sp] for sp in pc], [sem_avg_lb_psds[sp] for sp in pc], freqs, F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['sig_cl'], F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['clp'], F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['cl'], F_stat['post_hoc']['%s_%s' % (pc[0], pc[1])]['T'], labels, pc)
 

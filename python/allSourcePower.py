@@ -60,6 +60,12 @@ stc_ga_avg_lb_psds = {ip : mne.labels_to_stc(labels, ga_avg_lb_psds[ip], tmin=fr
 # Da qui sistema ....
 
 
+# Post hocs
+ph_combs = list(itertools.combinations(stat_periods,2))
+ph_combs = [(pc[1],pc[0]) for pc in ph_combs]  # Invert order
+ph_combs[-1] = ph_combs[-1][::-1]
+ph_combs[-2] = ph_combs[-2][::-1]
+
 # Statistics (ANOVA)
 #F_stat = w2o.statistics.labels_spectra_1w_rm_ANOVA([all_avg_p_lb_spds[ip] for ip in stat_periods], 'aparc_sub', 0.01, irbio_num=3)
 F_stat = w2o.statistics.labels_spectra_1w_rm_ANOVA([all_avg_p_lb_spds[ip] for ip in stat_periods], 'aparc_sub', 0.01, irbio_num=3, permutations=w2o.statistics.get_permutation_number(N,1))
